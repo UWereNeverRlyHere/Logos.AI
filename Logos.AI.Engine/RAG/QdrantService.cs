@@ -1,158 +1,138 @@
-﻿using Qdrant;
+﻿using Google.Protobuf.Collections;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using Google.Protobuf.WellKnownTypes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Logos.AI.Abstractions.Features.Knowledge;
 
-namespace RAG_Search.Services
+namespace Logos.AI.Engine.RAG;
+
+public class QdrantService
 {
+    private readonly QdrantClient _client;
+    private readonly ILogger<QdrantService> _logger;
+    private readonly string _collectionName = "logos_knowledge_base";
+    private readonly int _vectorSize = 1536; // Для text-embedding-3-small
 
-
-    public class QdrantService
+    public QdrantService(IConfiguration config, ILogger<QdrantService> logger)
     {
-        private readonly QdrantClient _client;
-        private readonly string _collectionName = "pdf_chunks";
-
-        public QdrantService(IConfiguration config)
-        {
-            var host = config["Qdrant:Host"] ?? "localhost";
-            var port = int.Parse(config["Qdrant:Port"] ?? "6334");
-
-            _client = new QdrantClient(host, port);
-
-            // Ensure collection exists (synchronous wait on startup is OK; in production consider async init)
-            EnsureCollectionAsync().GetAwaiter().GetResult();
-        }
-
-        private async Task EnsureCollectionAsync()
-        {
-            try
-            {
-                var collections = await _client.ListCollectionsAsync();
-
-                // Case 1: SDK returns List<string>
-                if (collections is IEnumerable<string> names)
-                {
-                    if (!names.Contains(_collectionName))
-                    {
-                        await CreateCollectionAsync();
-                    }
-                    return;
-                }
-
-                // Case 2: SDK returns an object with Collections property
-                var collProp = collections.GetType().GetProperty("Collections");
-                if (collProp != null)
-                {
-                    var collValue = collProp.GetValue(collections);
-                    if (collValue is IEnumerable<object> collList)
-                    {
-                        var names2 = collList
-                            .Select(c =>
-                            {
-                                var nameProp = c.GetType().GetProperty("Name");
-                                return nameProp?.GetValue(c)?.ToString();
-                            })
-                            .Where(n => !string.IsNullOrEmpty(n));
-
-                        if (!names2.Contains(_collectionName))
-                        {
-                            await CreateCollectionAsync();
-                        }
-                        return;
-                    }
-                }
-
-                // Fallback: always try to create (will no-op or error if exists)
-                await CreateCollectionAsync();
-            }
-            catch
-            {
-                // As a fallback, just try to create
-                await CreateCollectionAsync();
-            }
-        }
-
-        private async Task CreateCollectionAsync()
-        {
-            await _client.CreateCollectionAsync(
-                _collectionName,
-                new VectorParams
-                {
-                    Size = 1536, // adjust to your embedding dim
-                    Distance = Distance.Cosine
-                }
-            );
-        }
-
-
-        public async Task UpsertChunkAsync(string id, float[] embedding, Dictionary<string, object> payload)
-        {
-            // Use the style that your SDK version supports:
-            // PointId with Uuid property (works when id is a string)
-            var pointId = Guid.NewGuid();  // new PointId { Uuid = id };
-
-            var point = new PointStruct
-            {
-                Id = pointId,
-                // NOTE: many SDK versions nest Vector -> Dense -> Data
-                Vectors = new Vectors
-                {
-                    Vector = new Vector
-                    {
-                        Dense = new DenseVector { Data = { embedding } }
-                    }
-                }
-            };
-
-            // Payload values as string (or extend to handle numbers/objects as needed)
-            foreach (var kv in payload)
-            {
-                point.Payload[kv.Key] = new Qdrant.Client.Grpc.Value { StringValue = kv.Value?.ToString() ?? "" };
-            }
-
-            await _client.UpsertAsync(_collectionName, new[] { point });
-        }
-
-        public async Task<List<(string Chunk, float Score, Dictionary<string, object> Payload)>> SearchAsync(float[] embedding, int topK = 5)
-        {
-            var results = await _client.SearchAsync(_collectionName, embedding, limit: (ulong)topK);
-
-            return results
-                .Select(r =>
-                {
-                    var preview = r.Payload.TryGetValue("preview", out var val) ? val.StringValue : "";
-                    var payloadDict = r.Payload.ToDictionary(
-                        kv => kv.Key,
-                        kv => (object)kv.Value.StringValue
-                    );
-                    return (preview, r.Score, payloadDict);
-                })
-                .ToList();
-        }
-
-
-        public async Task<List<string>> GetAllUploadedDocumentsAsync()
-        {
-            // List all points in the collection
-            var scrollResponse = await _client.ScrollAsync(_collectionName);
-
-            var fileNames = scrollResponse.Result
-                .SelectMany(p => p.Payload)
-                .Where(kv => kv.Key == "fileName")
-                .Select(kv => kv.Value.StringValue)
-                .Distinct()
-                .ToList();
-
-            return fileNames;
-        }
-
-
+        _logger = logger;
+        var host = config["Qdrant:Host"] ?? "localhost";
+        var port = int.Parse(config["Qdrant:Port"] ?? "6334");
+        
+        _client = new QdrantClient(host, port);
     }
 
+    public async Task EnsureCollectionAsync(CancellationToken ct = default)
+    {
+        var collections = await _client.ListCollectionsAsync(ct);
+        if (!collections.Contains(_collectionName))
+        {
+            await _client.CreateCollectionAsync(_collectionName,
+                new VectorParams { Size = (ulong)_vectorSize, Distance = Distance.Cosine },
+                cancellationToken: ct);
+            _logger.LogInformation("Created collection {Name}", _collectionName);
+        }
+    }
 
+    public async Task UpsertChunkAsync(string pointId, float[] vector, Dictionary<string, object> payload, CancellationToken ct = default)
+    {
+        // Перетворюємо payload у формат Qdrant
+        var qdrantPayload = new MapField<string, Value>();
+        foreach (var kvp in payload)
+        {
+            qdrantPayload.Add(kvp.Key, ConvertToQdrantValue(kvp.Value));
+        }
+
+        // PointStruct вимагає Guid або UInt64. 
+        // Якщо pointId - це рядок типу "Guid-Index", нам треба або хешувати його в Guid, 
+        // або (простіше) використовувати Guid безпосередньо, якщо це можливо.
+        // Для спрощення тут припускаємо, що ми передаємо Guid, або генеруємо його.
+        // АЛЕ: Qdrant .NET клієнт підтримує і Guid PointId.
+        
+        // Хай pointId буде Guid. (Ми в контролері це поправимо або захешуємо рядок)
+        var pointGuid = GenerateGuidFromSeed(pointId); 
+
+        var point = new PointStruct
+        {
+            Id = pointGuid,
+            Vectors = vector,
+            Payload = { qdrantPayload }
+        };
+
+        await _client.UpsertAsync(_collectionName, new[] { point }, cancellationToken: ct);
+    }
+    
+    // --- ПОШУК (ВИПРАВЛЕНО) ---
+    public async Task<List<KnowledgeChunk>> SearchAsync(float[] vector, int limit = 5, CancellationToken ct = default)
+    {
+        var results = await _client.SearchAsync(
+            collectionName: _collectionName,
+            vector: vector,
+            limit: (ulong)limit,
+            payloadSelector: true, // <--- Твоя правка: забираємо весь Payload
+            cancellationToken: ct
+        );
+
+        var chunks = new List<KnowledgeChunk>();
+
+        foreach (var point in results)
+        {
+            // Безпечне витягування даних (Null checks + Defaults)
+            var p = point.Payload;
+            
+            var chunk = new KnowledgeChunk
+            {
+                DocumentId = TryGetGuid(p, "documentId"),
+                FileName = TryGetString(p, "fileName"),
+                PageNumber = TryGetInt(p, "pageNumber"),
+                Content = TryGetString(p, "fullText"), // Ось текст для LLM
+                Score = point.Score
+            };
+            
+            chunks.Add(chunk);
+        }
+
+        return chunks;
+    }
+
+    // --- Helpers ---
+
+    private Value ConvertToQdrantValue(object value)
+    {
+        return value switch
+        {
+            int i => i, // Implicit conversion to Value
+            long l => l,
+            float f => (double)f, // Qdrant uses double
+            double d => d,
+            string s => s,
+            bool b => b,
+            _ => value.ToString()
+        };
+    }
+    
+    // Допоміжні методи для безпечного парсингу Payload
+    private string TryGetString(MapField<string, Value> payload, string key) 
+        => payload.ContainsKey(key) ? payload[key].StringValue : string.Empty;
+
+    private int TryGetInt(MapField<string, Value> payload, string key) 
+        => payload.ContainsKey(key) ? (int)payload[key].IntegerValue : 0;
+
+    private Guid TryGetGuid(MapField<string, Value> payload, string key)
+        => payload.ContainsKey(key) && Guid.TryParse(payload[key].StringValue, out var g) ? g : Guid.Empty;
+
+    // Стійкий генератор GUID з рядка (щоб ID був однаковим для того самого чанка)
+    private Guid GenerateGuidFromSeed(string input)
+    {
+        using var md5 = System.Security.Cryptography.MD5.Create();
+        var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
+        return new Guid(hash);
+    }
+    
+    // Тимчасово для адмінки (хоча це краще брати з SQL)
+    public async Task<List<string>> GetAllUploadedDocumentsAsync()
+    {
+         return new List<string>(); 
+    }
 }

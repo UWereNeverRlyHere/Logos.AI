@@ -1,6 +1,6 @@
 ﻿namespace Logos.AI.Abstractions.Domain.Knowledge;
 
-public class Document
+public sealed class Document
 {
 	public Guid Id { get; set; } = Guid.NewGuid();
 	public string FileName { get; set; } = string.Empty;
@@ -11,5 +11,5 @@ public class Document
 	public bool IsProcessed { get; set; } // Чи розпарсили ми його успішно
 	
 	// Навігаційна властивість EF Core
-	public virtual ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
+	public ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
 }

@@ -1,36 +1,86 @@
-﻿using System.Text;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+﻿using Logos.AI.Abstractions.Domain.Knowledge;
+using Logos.AI.Engine.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
 namespace Logos.AI.Engine.RAG;
 
-public class SqlChunkLoaderService
+/// <summary>
+/// Сервіс для збереження "сирих" текстів та метаданих у SQLite.
+/// Це наш "холодний" архів, з якого можна відновити Qdrant.
+/// </summary>
+public class SqlChunkLoaderService(LogosDbContext dbContext, ILogger<SqlChunkLoaderService> logger)
 {
-    private readonly OpenAIEmbeddingService _embeddingService;
-    private readonly string _connectionString;
+	/// <summary>
+	/// Зберігає документ та його фрагменти в базу.
+	/// </summary>
+	public async Task<Guid> SaveDocumentAsync(
+		string                        fileName,
+		string                        filePath,
+		List<(int Page, string Text)> chunksWithPages,
+		CancellationToken             ct = default)
+	{
+		// 1. Перевірка дублікатів
+		var existing = await dbContext.Documents
+			.FirstOrDefaultAsync(d => d.FileName == fileName, ct);
 
-    public SqlChunkLoaderService(OpenAIEmbeddingService embeddingService, IConfiguration config)
-    {
-        _embeddingService = embeddingService;
-        _connectionString = config["ConnectionStrings:DefaultConnection"];
-    }
+		if (existing != null)
+		{
+			logger.LogWarning("Document {FileName} already exists. Skipping SQL save.", fileName);
+			return existing.Id;
+		}
 
-    public string LoadChunksFromSql()
-    {
-        var mergedText = new StringBuilder();
+		// 2. Створення документа
+		var document = new Document
+		{
+			Id = Guid.NewGuid(),
+			FileName = fileName,
+			FilePath = filePath,
+			UploadedAt = DateTime.UtcNow,
+			IsProcessed = true,
+			FileSizeBytes = File.Exists(filePath) ? new FileInfo(filePath).Length : 0
+		};
 
-        using var conn = new SqlConnection(_connectionString);
-        conn.Open();
+		// 3. Мапінг чанків з правильними сторінками
+		var chunksEntities = chunksWithPages.Select(c => new DocumentChunk
+		{
+			Id = Guid.NewGuid(),
+			DocumentId = document.Id,
+			PageNumber = c.Page, 
+			Content = c.Text,
+			TokenCount = c.Text.Length / 4
+		}).ToList();
 
-        using var cmd = new SqlCommand("SELECT columnname FROM tablename", conn);
-        using var reader = cmd.ExecuteReader();
+		document.Chunks = chunksEntities;
 
-        while (reader.Read())
-        {
-            var text = reader.GetString(0);
-            mergedText.Append(text).Append(' ');
-        }
+		// 4. Збереження
+		dbContext.Documents.Add(document);
+		await dbContext.SaveChangesAsync(ct);
 
-        return mergedText.ToString().Trim();
-    }
+		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved).", fileName, chunksEntities.Count);
+		return document.Id;
+	}
 
+	/// <summary>
+	/// Отримати всі чанки для переіндексації (Re-indexing flow).
+	/// </summary>
+	public async Task<List<DocumentChunk>> LoadAllChunksAsync(CancellationToken ct = default)
+	{
+		// AsNoTracking() пришвидшує читання, бо нам не треба відстежувати зміни
+		return await dbContext.Chunks
+			.AsNoTracking()
+			.Include(c => c.Document) // Підтягуємо назву файлу, якщо треба
+			.ToListAsync(ct);
+	}
+
+	/// <summary>
+	/// Отримати список завантажених файлів (для Адмінки).
+	/// </summary>
+	public async Task<List<Document>> GetAllDocumentsAsync(CancellationToken ct = default)
+	{
+		return await dbContext.Documents
+			.AsNoTracking()
+			.OrderByDescending(d => d.UploadedAt)
+			.ToListAsync(ct);
+	}
 }
