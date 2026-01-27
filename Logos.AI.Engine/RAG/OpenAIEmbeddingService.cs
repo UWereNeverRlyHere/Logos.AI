@@ -26,7 +26,7 @@ public class OpenAiEmbeddingService
         // VERSION - Community SDK 
         var options = new EmbeddingGenerationOptions
         {
-            Dimensions = _options.Dimensions 
+            Dimensions = _options.Dimensions
         };
         OpenAIEmbedding embedding = await _client.GenerateEmbeddingAsync(text,options, ct);
         float[] vector = embedding.ToFloats().ToArray();

@@ -70,7 +70,7 @@ public class QdrantService
         var searchParams = new SearchParams()
         {
             Exact = true,
-            HnswEf = 256,
+            //HnswEf = 256,
         };
         var results = await _client.SearchAsync(
             collectionName: _collectionName,
