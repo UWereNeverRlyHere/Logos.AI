@@ -1,42 +1,51 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Logos.AI.Engine.RAG;
 
 public class RagQueryService(
-	OpenAIEmbeddingService   embedding, 
+	IOptions<RagOptions> options,
+	OpenAiEmbeddingService   embedding, 
 	QdrantService            qdrant, 
 	ILogger<RagQueryService> logger)
 {
+	private readonly RagOptions _options = options.Value;
 	// === НОВИЙ МЕТОД (Те, що ти просив: Пошук документів) ===
-	public async Task<List<KnowledgeChunk>> SearchAsync(string query, int topK = 5, CancellationToken ct = default)
+	public async Task<List<KnowledgeChunk>> SearchAsync(string query, CancellationToken ct = default)
 	{
 		if (string.IsNullOrWhiteSpace(query)) return new List<KnowledgeChunk>();
-
-		// 1. Текст -> Вектор
-		var vectorEnum = await embedding.GetEmbeddingAsync(query);
+		logger.LogInformation("Embedding query: {Query}", query);
+		// 1. Векторизація
+		var vectorEnum = await embedding.GetEmbeddingAsync(query,ct);
 		var vector = vectorEnum.ToArray();
-
-		// 2. Вектор -> Qdrant (повертає KnowledgeChunk з метаданими)
-		var results = await qdrant.SearchAsync(vector, topK, ct);
-        
+		// 2. Пошук у Qdrant
+		float optionsMinScore = _options.MinScore;
+		logger.LogInformation("Searching Qdrant with threshold {OptionsMinScore}...", optionsMinScore);
+		var results = await qdrant.SearchAsync(vector, ct: ct);
+		logger.LogInformation("Found {Count} chunks above threshold", results.Count);
 		return results;
 	}
 	
-	public async Task<(string Answer, List<string> FileNames)> AnswerAsync(string query, int topK = 5)
+	public async Task<(string Answer, List<string> FileNames)> AnswerAsync(string query)
 	{
-		// Використовуємо нову логіку пошуку
-		var chunks = await SearchAsync(query, topK);
-        
+		var chunks = await SearchAsync(query);
 		var fileNames = chunks.Select(c => c.FileName).Distinct().ToList();
         
-		// Повертаємо заглушку або простий текст, бо зараз ми фокусуємось на пошуку, а не генерації
 		var sb = new StringBuilder();
-		sb.AppendLine($"Found information in {chunks.Count} fragments:");
-		foreach(var c in chunks)
+		if (chunks.Count == 0)
 		{
-			sb.AppendLine($"- {c.FileName} (p. {c.PageNumber}): {c.Content.Substring(0, Math.Min(50, c.Content.Length))}...");
+			sb.AppendLine("На жаль, у базі знань не знайдено релевантної інформації.");
+		}
+		else
+		{
+			sb.AppendLine($"Знайдено {chunks.Count} фрагментів:");
+			foreach(var c in chunks)
+			{
+				sb.AppendLine($"- {c.FileName} (стор. {c.PageNumber}, точність: {c.Score:F2}): {c.Content.Substring(0, Math.Min(50, c.Content.Length))}...");
+			}
 		}
         
 		return (sb.ToString(), fileNames);

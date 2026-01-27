@@ -1,16 +1,25 @@
-﻿using System.Text;
+﻿using Logos.AI.Engine.Configuration;
+using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Logos.AI.Engine.RAG;
 
-public static class PdfService
+public class PdfService
 {
+    private readonly int _chunkSizeWords;
+    private readonly int _chunkOverlapWords;
+    public PdfService(IOptions<RagOptions> options)
+    {
+        var ragOptions = options.Value;
+        _chunkSizeWords = ragOptions.ChunkSizeWords;
+        _chunkOverlapWords = ragOptions.ChunkOverlapWords;
+    }
     /// <summary>
     /// Витягує текст посторінково.
     /// Повертає список кортежів: (Номер сторінки, Текст).
     /// </summary>
-    public static List<(int Page, string Text)> ExtractTextWithPages(string filePath)
+    public List<(int Page, string Text)> ExtractTextWithPages(string filePath)
     {
         var result = new List<(int Page, string Text)>();
 
@@ -41,10 +50,7 @@ public static class PdfService
     /// <summary>
     /// Розбиває текст на чанки, зберігаючи номер сторінки.
     /// </summary>
-    public static List<(int Page, string Chunk)> ChunkTextWithPages(
-        List<(int Page, string Text)> pages, 
-        int maxWords = 300, 
-        int overlap = 50)
+    public List<(int Page, string Chunk)> ChunkTextWithPages(List<(int Page, string Text)> pages)
     {
         var result = new List<(int Page, string Chunk)>();
 
@@ -54,22 +60,22 @@ public static class PdfService
             
             // Якщо сторінка порожня або дуже мала, додаємо як є
             if (words.Length == 0) continue;
-            if (words.Length <= maxWords)
+            if (words.Length <= _chunkSizeWords)
             {
                 result.Add((pageAuth, pageText));
                 continue;
             }
 
             // Sliding Window алгоритм в межах однієї сторінки
-            for (int i = 0; i < words.Length; i += (maxWords - overlap))
+            for (int i = 0; i < words.Length; i += (_chunkSizeWords - _chunkOverlapWords))
             {
-                var chunkWords = words.Skip(i).Take(maxWords);
+                var chunkWords = words.Skip(i).Take(_chunkSizeWords);
                 var chunkText = string.Join(" ", chunkWords);
                 
                 result.Add((pageAuth, chunkText));
 
                 // Щоб не вийти за межі циклу зайвий раз
-                if (i + maxWords >= words.Length) break;
+                if (i + _chunkSizeWords >= words.Length) break;
             }
         }
 

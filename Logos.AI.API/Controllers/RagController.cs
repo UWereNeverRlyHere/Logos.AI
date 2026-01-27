@@ -10,7 +10,8 @@ public class RagController(
     SqlChunkLoaderService sqlChunkLoaderService,
     QdrantService qdrantService,
     RagQueryService queryService,
-    OpenAIEmbeddingService embeddingService,
+    OpenAiEmbeddingService embeddingService,
+    PdfService pdfService,
     IConfiguration config) : Controller
 {
     // GET: rag/index
@@ -112,7 +113,7 @@ public class RagController(
 
             // 2. Парсимо PDF (зберігаючи номери сторінок!)
             // Це CPU-bound операція
-            var rawPages = PdfService.ExtractTextWithPages(filePath);
+            var rawPages = pdfService.ExtractTextWithPages(filePath);
 
             if (rawPages.Count == 0)
             {
@@ -121,10 +122,7 @@ public class RagController(
             }
 
             // 3. Нарізаємо на чанки
-            int chunkSize = config.GetValue<int>("Rag:ChunkSizeWords", 300);
-            int overlap = config.GetValue<int>("Rag:ChunkOverlapWords", 50);
-
-            var chunks = PdfService.ChunkTextWithPages(rawPages, chunkSize, overlap);
+            var chunks = pdfService.ChunkTextWithPages(rawPages);
 
             // 4. Зберігаємо в SQL (Архів + Метадані)
             // Повертає ID документа, який ми використаємо для зв'язку в Qdrant

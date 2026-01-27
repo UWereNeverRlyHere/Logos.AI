@@ -1,25 +1,28 @@
-﻿using Google.Protobuf.Collections;
+﻿using System.Security.Cryptography;
+using System.Text;
+using Google.Protobuf.Collections;
+using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Engine.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Logos.AI.Abstractions.Features.Knowledge; 
-
 namespace Logos.AI.Engine.RAG;
 
 public class QdrantService
 {
-    private readonly QdrantClient _client;
     private readonly ILogger<QdrantService> _logger;
-    private readonly string _collectionName = "logos_knowledge_base";
-    private readonly int _vectorSize = 1536; // text-embedding-3-small
-
-    public QdrantService(IConfiguration config, ILogger<QdrantService> logger)
+    private readonly QdrantClient _client;
+    private readonly string _collectionName;
+    private readonly int _vectorSize;
+    private readonly RagOptions _options; 
+    public QdrantService(IOptions<RagOptions> options, ILogger<QdrantService> logger)
     {
+        _options = options.Value;
+        _collectionName = _options.Qdrant.CollectionName;
+        _vectorSize = _options.Qdrant.VectorSize;
         _logger = logger;
-        var host = config["Qdrant:Host"] ?? "localhost";
-        var port = int.Parse(config["Qdrant:Port"] ?? "6334");
-        _client = new QdrantClient(host, port);
+        _client = new QdrantClient(_options.Qdrant.Host, _options.Qdrant.Port);
     }
 
     public async Task EnsureCollectionAsync(CancellationToken ct = default)
@@ -48,18 +51,37 @@ public class QdrantService
             Payload = { qdrantPayload }
         };
 
-        await _client.UpsertAsync(_collectionName, new[] { point }, cancellationToken: ct);
+        await _client.UpsertAsync(_collectionName, [point], cancellationToken: ct);
     }
 
-    // === НОВИЙ МЕТОД ПОШУКУ ===
-    public async Task<List<KnowledgeChunk>> SearchAsync(float[] vector, int limit = 5, CancellationToken ct = default)
+    public async Task<List<KnowledgeChunk>> SearchAsync(float[] vector, CancellationToken ct = default)
     {
+        /*var filter = new Filter
+        {
+            Must = { // "Must" означає "AND"
+                new Condition {
+                    Field = new FieldCondition {
+                        Key = "fileName", // Фільтруємо за назвою файлу
+                        Match = new Match { Keyword = "3191.pdf" } // Тільки цей файл
+                    }
+                }
+            }
+        };*/
+        var searchParams = new SearchParams()
+        {
+            Exact = true,
+            HnswEf = 256,
+        };
         var results = await _client.SearchAsync(
             collectionName: _collectionName,
             vector: vector,
-            limit: (ulong)limit,
-            payloadSelector: true, // <--- ВАЖЛИВО: Кажемо Qdrant повернути дані (текст, сторінку)
+            limit: _options.TopK,
+            payloadSelector: true,
+            scoreThreshold: _options.MinScore,
+            searchParams: searchParams,
             cancellationToken: ct
+            
+            //,filter: filter
         );
 
         var chunks = new List<KnowledgeChunk>();
@@ -71,7 +93,7 @@ public class QdrantService
                 DocumentId = TryGetGuid(p, "documentId"),
                 FileName = TryGetString(p, "fileName"),
                 PageNumber = TryGetInt(p, "pageNumber"),
-                Content = TryGetString(p, "fullText"), // Текст для виводу
+                Content = TryGetString(p, "fullText"),
                 Score = point.Score
             });
         }
@@ -88,8 +110,8 @@ public class QdrantService
     private Guid TryGetGuid(MapField<string, Value> p, string k) => p.ContainsKey(k) && Guid.TryParse(p[k].StringValue, out var g) ? g : Guid.Empty;
     private Guid GenerateGuidFromSeed(string input)
     {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        return new Guid(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input)));
+        using var md5 = MD5.Create();
+        return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(input)));
     }
     
     // Заглушка для старого коду, якщо десь викликається
