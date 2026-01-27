@@ -75,7 +75,7 @@ public class QdrantService
         var results = await _client.SearchAsync(
             collectionName: _collectionName,
             vector: vector,
-            limit: _options.TopK,
+            limit: _options.Qdrant.TopK,
             payloadSelector: true,
             scoreThreshold: _options.MinScore,
             searchParams: searchParams,
