@@ -1,0 +1,186 @@
+{
+  "Patient": {
+    "FirstName": "Катерина",
+    "LastName": "Стахур",
+    "MiddleName": "Іванівна",
+    "DateOfBirth": "1955-09-26T00:00:00",
+    "Gender": "Female",
+    "Phone": "0961058373"
+  },
+  "Analyses": [
+    {
+      "Name": "Біохімічний аналіз крові",
+      "Date": "2026-01-19T00:00:00",
+      "Indicators": [
+        {
+          "Name": "Калій (К)",
+          "Value": 5.0,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "3.5-5.5"
+        },
+        {
+          "Name": "Кальцій (Са)",
+          "Value": 2.24,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "2.15-2.50"
+        },
+        {
+          "Name": "Креатинін",
+          "Value": 110.1,
+          "Unit": "мкмоль/л",
+          "ReferenceRange": "50.4-98.1"
+        },
+        {
+          "Name": "Сечовина",
+          "Value": 6.9,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "2.8-7.2"
+        },
+        {
+          "Name": "Сечова кислота",
+          "Value": 486.0,
+          "Unit": "мкмоль/л",
+          "ReferenceRange": "154.7-357.0"
+        },
+        {
+          "Name": "Швидкість клубочкової фільтрації (CKD-EPI)",
+          "Value": 44.0,
+          "Unit": "мл/хв/1,73м^2",
+          "ReferenceRange": "> 60.0"
+        },
+        {
+          "Name": "Глюкоза (сироватка)",
+          "Value": 5.89,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "4.11-5.89"
+        },
+        {
+          "Name": "Білірубін загальний",
+          "Value": 7.7,
+          "Unit": "мкмоль/л",
+          "ReferenceRange": "< 21"
+        },
+        {
+          "Name": "Білірубін прямий",
+          "Value": 2.4,
+          "Unit": "мкмоль/л",
+          "ReferenceRange": "< 5"
+        },
+        {
+          "Name": "Білірубін непрямий",
+          "Value": 5.3,
+          "Unit": "мкмоль/л",
+          "ReferenceRange": "75% від біл. заг."
+        },
+        {
+          "Name": "Аланінамінотрансфераза (АЛТ)",
+          "Value": 21.3,
+          "Unit": "Один./л",
+          "ReferenceRange": "< 34"
+        },
+        {
+          "Name": "Аспартатамінотрансфераза (АСТ)",
+          "Value": 21.0,
+          "Unit": "Один./л",
+          "ReferenceRange": "< 31"
+        },
+        {
+          "Name": "Гамма-глутамілтрансфераза (ГГТ)",
+          "Value": 14.8,
+          "Unit": "Один./л",
+          "ReferenceRange": "< 38"
+        },
+        {
+          "Name": "Лужна фосфатаза (ЛФ)",
+          "Value": 60.1,
+          "Unit": "Один./л",
+          "ReferenceRange": "30-120"
+        },
+        {
+          "Name": "Загальний білок",
+          "Value": 72.8,
+          "Unit": "г/л",
+          "ReferenceRange": "66-83"
+        },
+        {
+          "Name": "Альбумін",
+          "Value": 45.4,
+          "Unit": "г/л",
+          "ReferenceRange": "35-52"
+        }
+      ]
+    },
+    {
+      "Name": "Загальний аналіз крові (ЗАК)",
+      "Date": "2026-01-19T00:00:00",
+      "Indicators": [
+        {
+          "Name": "Лейкоцити (WBC)",
+          "Value": 4.58,
+          "Unit": "10^9/L",
+          "ReferenceRange": "3.19-8.84"
+        },
+        {
+          "Name": "Еритроцити (RBC)",
+          "Value": 4.67,
+          "Unit": "10^12/L",
+          "ReferenceRange": "3.55-5.09"
+        },
+        {
+          "Name": "Гемоглобін (HGB)",
+          "Value": 134.0,
+          "Unit": "г/л",
+          "ReferenceRange": "111-147"
+        },
+        {
+          "Name": "Гематокрит (HCT)",
+          "Value": 40.7,
+          "Unit": "%",
+          "ReferenceRange": "32.9-44.4"
+        },
+        {
+          "Name": "Середній об'єм еритроцита (MCV)",
+          "Value": 87.2,
+          "Unit": "fL",
+          "ReferenceRange": "81.6-98.3"
+        },
+        {
+          "Name": "Середній вміст гемоглобіну (MCH)",
+          "Value": 28.7,
+          "Unit": "pg",
+          "ReferenceRange": "26.6-33.1"
+        },
+        {
+          "Name": "Середня конц. гемоглобіну (MCHC)",
+          "Value": 329.0,
+          "Unit": "г/л",
+          "ReferenceRange": "317-355"
+        },
+        {
+          "Name": "Тромбоцити (PLT)",
+          "Value": 253.0,
+          "Unit": "10^9/L",
+          "ReferenceRange": "179-373"
+        },
+        {
+          "Name": "ШОЕ (ESR)",
+          "Value": 20.0,
+          "Unit": "мм/год",
+          "ReferenceRange": "2-30"
+        },
+        {
+          "Name": "Нейтрофіли % (NEU%)",
+          "Value": 55.2,
+          "Unit": "%",
+          "ReferenceRange": "48-78"
+        },
+        {
+          "Name": "Лімфоцити % (LYM%)",
+          "Value": 35.5,
+          "Unit": "%",
+          "ReferenceRange": "19-37"
+        }
+      ]
+    }
+  ]
+}

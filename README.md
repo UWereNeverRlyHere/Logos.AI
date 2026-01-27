@@ -1,99 +1,46 @@
-﻿# Logos.AI - RAG Knowledge Base
+﻿# Logos.AI — Інтелектуальний Медичний Асистент
 
-Logos.AI is a **Retrieval-Augmented Generation (RAG)** system built with **.NET 9**. It allows users to upload PDF documents, index them using OpenAI embeddings, and perform semantic search to find relevant information within the documents.
+**Logos.AI** — це RAG (Retrieval-Augmented Generation) система, розроблена для семантичного пошуку по медичних протоколах та настановах. Проект використовує сучасні методи NLP (Natural Language Processing) та векторного пошуку для надання лікарям точних відповідей із посиланнями на першоджерела.
 
-## 🚀 Features
+## 🚀 Основні Можливості
 
-*   **📄 PDF Ingestion:** Upload PDF documents via the web interface.
-*   **🧩 Smart Chunking:** Automatically splits text into chunks while preserving page numbers.
-*   **🧠 Semantic Search:** Uses OpenAI Embeddings to find the most relevant context for a user's query.
-*   **⚡ Vector Database:** Utilizes **Qdrant** for high-speed vector similarity search.
-*   **💾 Hybrid Storage:**
-    *   **SQLite:** Stores raw document text, metadata, and upload history ("Cold Storage").
-    *   **Qdrant:** Stores vectors and payloads for search ("Hot Storage").
-*   **UI:** Simple ASP.NET MVC interface for uploading and searching.
+* **Smart Document Ingestion:** Завантаження PDF-документів з автоматичним розпізнаванням структури.
+* **Intelligent Chunking:** Унікальний алгоритм нарізки тексту, який зберігає цілісність речень та абзаців (на відміну від звичайного поділу за кількістю слів), що критично важливо для медичного контексту.
+* **Semantic Search:** Пошук за змістом, а не лише за ключовими словами. Система розуміє, що "біль у животі" та "абдомінальний синдром" — це пов'язані речі.
+* **Precision Filtering:** Використання порогу впевненості (`Confidence Score`) та точного пошуку (`Exact Search`), щоб уникнути "галюцинацій" та нерелевантних відповідей.
+* **Evidence-Based:** Кожна знайдена відповідь містить посилання на конкретний документ та сторінку.
 
-## 🛠️ Tech Stack
+## 🛠 Технологічний Стек
 
-*   **Framework:** .NET 9 (ASP.NET Core Web API / MVC)
-*   **Vector DB:** Qdrant
-*   **AI Model:** OpenAI (`text-embedding-3-small`)
-*   **Database:** SQLite (Entity Framework Core)
-*   **Architecture:** Modular (API, Engine, Abstractions)
+### Backend
+* **Core:** .NET 9 (ASP.NET Core MVC)
+* **Architecture:** Clean Architecture (API, Engine, Abstractions)
+* **Database:** PostgreSQL / MSSQL (через EF Core) для метаданих.
 
-## ⚙️ Getting Started
+### AI & Data
+* **Embeddings:** OpenAI `text-embedding-3-small` (1536 dimensions).
+* **Vector DB:** Qdrant (зберігання векторів та payload).
+* **PDF Processing:** PdfPig (для витягування тексту та координат).
 
-### 1. Prerequisites
+## ⚙️ Налаштування (appsettings.json)
 
-*   [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-*   [Docker](https://www.docker.com/) (for running Qdrant)
-*   OpenAI API Key
-
-### 2. Run Qdrant (Vector DB)
-
-Run the following command to start Qdrant in a Docker container:
-
-```bash
-docker run -p 6333:6333 -p 6334:6334 \
-    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-    qdrant/qdrant
-```
-
-### 3. Configuration
-
-Update `Logos.AI.API/appsettings.json` with your settings:
+Система використовує гнучкий паттерн Options для налаштування параметрів RAG без перекомпіляції:
 
 ```json
 {
-  "OpenAI": {
-    "ApiKey": "sk-proj-...",
-    "Model": "gpt-4o-mini" 
+  "Rag": {
+    "ChunkSizeWords": 300,    // Цільовий розмір блоку тексту
+    "ChunkOverlapWords": 50,  // Перекриття для збереження контексту
+    "MinScore": 0.5,          // Поріг схожості (фільтр шуму)
+    "TopK": 5                 // Кількість результатів
   },
   "Qdrant": {
     "Host": "localhost",
-    "Port": "6334"
+    "Port": 6334,
+    "CollectionName": "logos_knowledge_base"
   },
-  "ConnectionStrings": {
-    "LogosDatabase": "Data Source=logos.db"
-  },
-  "Rag": {
-    "ChunkSizeWords": 300,
-    "ChunkOverlapWords": 50,
-    "TopK": 5
+  "OpenAI": {
+    "ApiKey": "sk-...",
+    "EmbeddingModel": "text-embedding-3-small"
   }
 }
-```
-
-### 4. Database Migration
-
-Ensure the SQLite database is created:
-
-```bash
-cd Logos.AI.API
-dotnet ef database update
-```
-
-### 5. Run the Application
-
-```bash
-dotnet run
-```
-
-Navigate to `http://localhost:5000/rag/index` (or the port specified in your launch profile).
-
-## 🏗️ Architecture Overview
-
-1.  **Upload:** User uploads a PDF -> System extracts text -> Splits into chunks.
-2.  **Indexing:**
-    *   Chunks are saved to **SQLite** (for record-keeping).
-    *   Chunks are sent to **OpenAI** to generate Embeddings (Vectors).
-    *   Vectors + Metadata (Page #, Filename) are upserted to **Qdrant**.
-3.  **Search:**
-    *   User asks a question.
-    *   Question is converted to a Vector (via OpenAI).
-    *   **Qdrant** performs a Cosine Similarity search.
-    *   Relevant text chunks are returned and displayed to the user.
-
-## 📝 License
-
-[MIT](LICENSE)

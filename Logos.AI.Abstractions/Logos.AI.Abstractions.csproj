@@ -7,7 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Features\RAG\" />
       <Folder Include="Features\Validation\" />
     </ItemGroup>
 
