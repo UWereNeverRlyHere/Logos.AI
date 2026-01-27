@@ -1,0 +1,15 @@
+﻿namespace Logos.AI.Abstractions.Domain.Knowledge;
+
+public class Document
+{
+	public Guid Id { get; set; } = Guid.NewGuid();
+	public string FileName { get; set; } = string.Empty;
+	public string FilePath { get; set; } = string.Empty; // Фізичний шлях на диску
+	public byte[] ? RawFile { get; set; } // можливо, потім буду файли таки в базі тримати
+	public long FileSizeBytes { get; set; }
+	public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+	public bool IsProcessed { get; set; } // Чи розпарсили ми його успішно
+	
+	// Навігаційна властивість EF Core
+	public virtual ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
+}

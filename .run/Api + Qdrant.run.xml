@@ -1,0 +1,7 @@
+﻿<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Api + Qdrant" type="CompoundRunConfigurationType">
+    <toRun name="Logos.AI.API: https" type="LaunchSettings" />
+    <toRun name="scratches.qdrant: Compose Deployment" type="docker-deploy" />
+    <method v="2" />
+  </configuration>
+</component>
