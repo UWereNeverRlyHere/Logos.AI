@@ -8,21 +8,14 @@
 
     .card-header {
         background:lavender;
-<<<<<<< HEAD
         font-weight:bold;
-=======
->>>>>>> d6274c67d4b4082a9d0080a4a150dc1192074b49
     }
 </style>
 
 <div class="container py-5">
-<<<<<<< HEAD
     <h2 class="text-center mb-4">🔍 RAG Search Portal in .NET</h2>
     <h5 class="text-center mb-4">[.NET 8, OpenAI Embedding , Qdrant Vector DB, Semantic Search, Data Source - PDF, Azure SQL DB]</h5>
     <hr />
-=======
-    <h2 class="text-center mb-4">🔍 RAG Search Portal</h2>
->>>>>>> d6274c67d4b4082a9d0080a4a150dc1192074b49
 
     @if (ViewBag.Message != null)
     {
@@ -37,9 +30,9 @@
                 <ul class="list-group list-group-flush">
                     @if (ViewBag.AllDocuments != null && ViewBag.AllDocuments.Count > 0)
                     {
-                        foreach (string source in ViewBag.AllDocuments)
+                        foreach (var source in ViewBag.AllDocuments)
                         {
-                            <li class="list-group-item">@source</li>
+                            <li class="list-group-item">@source.FileName</li>
                         }
                     }
                     else
@@ -110,4 +103,3 @@
         </div>
     </div>
 </div>
-

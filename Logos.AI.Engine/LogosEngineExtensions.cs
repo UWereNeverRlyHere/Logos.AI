@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using RAG_Search.Services;
-
 namespace Logos.AI.Engine;
 
 public static class LogosEngineExtensions
@@ -19,6 +17,6 @@ public static class LogosEngineExtensions
 		builder.Services.AddHttpClient<OpenAIEmbeddingService>();
 		builder.Services.AddSingleton<QdrantService>();
 		builder.Services.AddSingleton<RagQueryService>();
-		builder.Services.AddSingleton<SqlChunkLoaderService>();
+		builder.Services.AddScoped<SqlChunkLoaderService>();
 	}
 }

@@ -1,172 +1,159 @@
-﻿using Logos.AI.Engine.RAG;
+﻿using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Engine.RAG;
 using Microsoft.AspNetCore.Mvc;
-using RAG_Search.Services;
-namespace Logos.AI.API.Controllers
+
+namespace Logos.AI.API.Controllers;
+
+[Route("rag")]
+public class RagController(
+    SqlChunkLoaderService sqlChunkLoaderService,
+    QdrantService qdrantService,
+    RagQueryService queryService,
+    OpenAIEmbeddingService embeddingService,
+    IConfiguration config) : Controller
 {
-	[Route("rag")]
-	public class RagController : Controller
-	{
-		private readonly OpenAIEmbeddingService _embedding;
-		private readonly QdrantService _qdrant;
-		private readonly RagQueryService _ragQuery;
-		private readonly IConfiguration _config;
-		private readonly SqlChunkLoaderService _sqlChunkLoaderService;
+    // GET: rag/index
+    [HttpGet("index")]
+    public async Task<IActionResult> Index()
+    {
+        // Завантажуємо список документів з SQL (це наше джерело правди для списків)
+        var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+        ViewBag.AllDocuments = docs;
 
+        // Повертаємо пустий список результатів, щоб View не ламалася
+        return View("Index", new List<KnowledgeChunk>());
+    }
 
-		public RagController(
-			OpenAIEmbeddingService embedding,
-			QdrantService          qdrant,
-			RagQueryService        ragQuery,
-			IConfiguration         config,
-			SqlChunkLoaderService  sqlChunkLoaderService)
+    // POST: rag/search
+    [HttpPost("search")]
+    public async Task<IActionResult> Search(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return RedirectToAction("Index");
+        }
 
-		{
-			_embedding = embedding;
-			_qdrant = qdrant;
-			_ragQuery = ragQuery;
-			_config = config;
-			_sqlChunkLoaderService = sqlChunkLoaderService;
-		}
+        try
+        {
+            // Переконуємось, що колекція існує перед пошуком
+            await qdrantService.EnsureCollectionAsync();
 
-		[HttpGet("index")]
-		public async Task<IActionResult> IndexAsync()
-		{
-			var allDocs = await _qdrant.GetAllUploadedDocumentsAsync();
+            // 1. Виконуємо пошук через RagQueryService
+            // Він сам зробить векторизацію і запит в Qdrant
+            var results = await queryService.SearchAsync(query);
 
-			ViewBag.AllDocuments = allDocs;
+            // 2. Оновлюємо список документів для сайдбару (щоб не зникав)
+            var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+            ViewBag.AllDocuments = docs;
 
-			return View();
-		}
+            // 3. Повертаємо результати
+            return View("Index", results);
+        }
+        catch (Exception ex)
+        {
+            ViewBag.Message = $"Error during search: {ex.Message}";
+            var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+            ViewBag.AllDocuments = docs;
+            return View("Index", new List<KnowledgeChunk>());
+        }
+    }
 
-		[HttpPost("upload")]
-		public async Task<IActionResult> Upload(IFormFile file)
-		{
-			if (file == null || file.Length == 0) return View("Index");
+    // Зберігаємо старий метод Query для сумісності, якщо він десь викликається
+    [HttpPost("query")]
+    public async Task<IActionResult> Query(string question)
+    {
+        return await Search(question);
+    }
 
-			try
-			{
-				// 1. Збереження файлу
-				var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-				if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+    // POST: rag/upload
+    [HttpPost("upload")]
+    public async Task<IActionResult> Upload(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            ViewBag.Message = "Please select a PDF file.";
+            return await Index();
+        }
 
-				var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
-				var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+        try
+        {
+            // 1. Зберігаємо файл фізично
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-				using (var fs = new FileStream(filePath, FileMode.Create))
-				{
-					await file.CopyToAsync(fs);
-				}
+            // Генеруємо унікальне ім'я файлу
+            var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-				// 2. Посторінковий парсинг (зберігаємо структуру)
-				var rawPages = PdfService.ExtractTextWithPages(filePath);
+            await using (var fs = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(fs);
+            }
 
-				// 3. Нарізка на чанки (з прив'язкою до сторінок)
-				int chunkSize = _config.GetValue<int>("Rag:ChunkSizeWords", defaultValue:300);
-				int overlap = _config.GetValue<int>("Rag:ChunkOverlapWords", defaultValue:50);
+            // 2. Парсимо PDF (зберігаючи номери сторінок!)
+            // Це CPU-bound операція
+            var rawPages = PdfService.ExtractTextWithPages(filePath);
 
-				// List<(int Page, string Chunk)>
-				var chunkedData = PdfService.ChunkTextWithPages(rawPages, chunkSize, overlap);
+            if (rawPages.Count == 0)
+            {
+                ViewBag.Message = "Could not extract text from PDF (it might be an image scan).";
+                return await Index();
+            }
 
-				// 4. Збереження в SQL (Тепер у нас є реальні PageNumbers!)
-				var documentId = await _sqlChunkLoaderService.SaveDocumentAsync(file.FileName, filePath, chunkedData);
+            // 3. Нарізаємо на чанки
+            int chunkSize = config.GetValue<int>("Rag:ChunkSizeWords", 300);
+            int overlap = config.GetValue<int>("Rag:ChunkOverlapWords", 50);
 
-				// 5. Векторизація для Qdrant
-				for (int i = 0; i < chunkedData.Count; i++)
-				{
-					var (page, text) = chunkedData[i];
+            var chunks = PdfService.ChunkTextWithPages(rawPages, chunkSize, overlap);
 
-					var embList = await _embedding.GetEmbeddingAsync(text);
-					var embArray = embList.ToArray();
+            // 4. Зберігаємо в SQL (Архів + Метадані)
+            // Повертає ID документа, який ми використаємо для зв'язку в Qdrant
+            var documentId = await sqlChunkLoaderService.SaveDocumentAsync(file.FileName, filePath, chunks);
 
-					var pointId = $"{documentId}-{i}"; // Unique ID
+            // 5. Векторизація та збереження в Qdrant
+            
+            // ВАЖЛИВО: Переконуємось, що колекція існує
+            await qdrantService.EnsureCollectionAsync();
 
-					var payload = new Dictionary<string, object>
-					{
-						["documentId"] = documentId.ToString(),
-						["chunkIndex"] = i,
-						["pageNumber"] = page, 
-						["fileName"] = file.FileName,
-						["preview"] = text.Length > 300 ? text.Substring(0, 300) + "..." : text,
-						["fullText"] = text
-					};
+            // Це IO-bound операція (OpenAI API + Qdrant API)
+            for (int i = 0; i < chunks.Count; i++)
+            {
+                var (page, text) = chunks[i];
 
-					await _qdrant.UpsertChunkAsync(pointId, embArray, payload);
-				}
+                // А. Отримуємо вектор
+                var embList = await embeddingService.GetEmbeddingAsync(text);
+                var vector = embList.ToArray();
 
-				ViewBag.Message = $"Uploaded '{file.FileName}'. Processed {chunkedData.Count} chunks from {rawPages.Count} pages.";
-			}
-			catch (Exception ex)
-			{
-				ViewBag.Message = $"Error: {ex.Message}";
-			}
+                // Б. Формуємо ID точки (щоб був стабільним)
+                var pointId = $"{documentId}-{i}";
 
-			ViewBag.AllDocuments = await _sqlChunkLoaderService.GetAllDocumentsAsync();
-			return View("Index");
-		}
+                // В. Формуємо Payload (дані, які повернуться при пошуку)
+                var payload = new Dictionary<string, object>
+                {
+                    ["documentId"] = documentId.ToString(),
+                    ["fileName"] = file.FileName,
+                    ["pageNumber"] = page,     // Важливо: номер сторінки
+                    ["chunkIndex"] = i,
+                    ["fullText"] = text,       // Важливо: повний текст для LLM
+                    ["preview"] = text.Length > 200 ? text.Substring(0, 200) + "..." : text
+                };
 
+                // Г. Відправляємо в Qdrant
+                await qdrantService.UpsertChunkAsync(pointId, vector, payload);
+            }
 
-		[HttpPost("LoadDBData")]
-		public async Task<IActionResult> LoadDBData()
-		{
-			// Step 1: Extract text and chunk
-			var text = _sqlChunkLoaderService.LoadChunksFromSql();
-			int chunkSize = int.Parse(_config["Rag:ChunkSizeWords"] ?? "300");
-			int overlap = int.Parse(_config["Rag:ChunkOverlapWords"] ?? "50");
-			var chunks = PdfService.ChunkText(text, chunkSize, overlap);
+            ViewBag.Message = $"Success! Uploaded '{file.FileName}', saved to SQL, and indexed {chunks.Count} chunks in Qdrant.";
+        }
+        catch (Exception ex)
+        {
+            // Логування помилки
+            ViewBag.Message = $"Error: {ex.Message}";
+        }
 
-			var docId = Guid.NewGuid();
+        // Оновлюємо список документів і повертаємо View
+        var finalDocs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+        ViewBag.AllDocuments = finalDocs;
 
-			for (int i = 0; i < chunks.Count; i++)
-			{
-				var chunk = chunks[i];
-
-				// Step 2: Get embedding asynchronously
-				var embList = await _embedding.GetEmbeddingAsync(chunk);
-				var embArray = embList.ToArray(); // convert List<float> -> float[]
-
-				// Step 3: Prepare payload
-				var pointId = $"{docId}-{i}";
-
-				var payload = new Dictionary<string, object>
-				{
-					["documentId"] = docId.ToString(),
-					["chunkIndex"] = i,
-					["preview"] = chunk.Length > 200 ? chunk.Substring(0, 200) : chunk,
-
-					["fileName"] = "SQL Database"
-				};
-
-				// Step 4: Upsert chunk to Qdrant
-				await _qdrant.UpsertChunkAsync(pointId, embArray, payload);
-			}
-
-
-			ViewBag.Message = $"Uploaded SQL Database and indexed {chunks.Count} chunks.";
-			//return RedirectToAction("Index");
-			return View("Index");
-		}
-
-
-		[HttpPost("query")]
-		public async Task<IActionResult> Query(string question)
-		{
-			if (string.IsNullOrWhiteSpace(question))
-			{
-				ViewBag.Message = "Please enter a question.";
-				return View("Index");
-			}
-
-			var allDocs = await _qdrant.GetAllUploadedDocumentsAsync();
-			ViewBag.AllDocuments = allDocs;
-
-			var (answer, files) = await _ragQuery.AnswerAsync(question);
-			ViewBag.SourceDocuments = files[0].ToString();
-			;
-			ViewBag.Question = question;
-			ViewBag.Answer = answer;
-
-			//return RedirectToAction("Index");
-			return View("Index");
-		}
-	}
+        return View("Index", new List<KnowledgeChunk>());
+    }
 }
