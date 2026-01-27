@@ -1,4 +1,5 @@
-﻿using Logos.AI.Abstractions.Features.Knowledge;
+﻿using System.Text;
+using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Engine.RAG;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,14 +40,33 @@ public class RagController(
             await qdrantService.EnsureCollectionAsync();
 
             // 1. Виконуємо пошук через RagQueryService
-            // Він сам зробить векторизацію і запит в Qdrant
             var results = await queryService.SearchAsync(query);
 
-            // 2. Оновлюємо список документів для сайдбару (щоб не зникав)
+            // 2. Форматуємо результати для відображення (так як немає LLM генерації)
+            if (results.Count > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine($"Found {results.Count} relevant fragments:\n");
+                
+                foreach (var item in results)
+                {
+                    sb.AppendLine($"--- Page {item.PageNumber} (Score: {item.Score:F2}) ---");
+                    sb.AppendLine(item.Content);
+                    sb.AppendLine(); // Пустий рядок між фрагментами
+                }
+
+                ViewBag.Answer = sb.ToString();
+                ViewBag.SourceDocuments = string.Join(", ", results.Select(r => r.FileName).Distinct());
+            }
+            else
+            {
+                ViewBag.Answer = "No relevant information found in the knowledge base.";
+            }
+
+            // 3. Оновлюємо список документів для сайдбару
             var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
             ViewBag.AllDocuments = docs;
 
-            // 3. Повертаємо результати
             return View("Index", results);
         }
         catch (Exception ex)
@@ -85,7 +105,7 @@ public class RagController(
             var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            await using (var fs = new FileStream(filePath, FileMode.Create))
+            using (var fs = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(fs);
             }
