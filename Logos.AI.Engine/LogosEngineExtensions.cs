@@ -26,6 +26,7 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<PdfService>();
 		
 		builder.Services.AddScoped<ContextExtractorService>();
+		builder.Services.AddScoped<ClinicalReasoningService>();
 
 		builder.ConfigureOptions();
 		

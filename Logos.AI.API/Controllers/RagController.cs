@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Abstractions.Features.PatientAnalysis;
 using Logos.AI.Abstractions.Features.RAG;
@@ -10,13 +11,14 @@ namespace Logos.AI.API.Controllers;
 
 [Route("rag")]
 public class RagController(
-	SqlChunkLoaderService   sqlChunkLoaderService,
-	QdrantService           qdrantService,
-	RagQueryService         queryService,
-	OpenAiEmbeddingService  embeddingService,
-	PdfService              pdfService,
-	ContextExtractorService contextExtractorService,
-	IConfiguration          config) : Controller
+	SqlChunkLoaderService    sqlChunkLoaderService,
+	QdrantService            qdrantService,
+	RagQueryService          queryService,
+	OpenAiEmbeddingService   embeddingService,
+	PdfService               pdfService,
+	ContextExtractorService  contextExtractorService,
+	ClinicalReasoningService clinicalReasoningService,
+	IConfiguration           config) : Controller
 {
 	// GET: rag/index
 	[HttpGet("index")]
@@ -52,7 +54,30 @@ public class RagController(
 		return Ok(result);
 	}
 
+	[HttpPost("TestClinicalReasoning")]
+	public async Task<IActionResult> TestClinicalReasoning([FromBody] AnalyzePatientRequest reqData)
+	{
+		var extractedContext = await contextExtractorService.ExtractAsync(reqData);
+		var result = new TestVectorSearchResult(extractedContext);
+		try
+		{
+			await qdrantService.EnsureCollectionAsync();
+			foreach (var context in extractedContext)
+			{
+				var results = await queryService.SearchAsync(context);
+				result.AddResults(results);
+			}
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
+		result.SortByScore();
+		var answer = await clinicalReasoningService.AnalyzeAsync(JsonSerializer.Serialize(reqData), result.Results);
 
+		return Ok(answer);
+	}
 	// POST: rag/search
 	[HttpPost("search")]
 	public async Task<IActionResult> Search(string query)
