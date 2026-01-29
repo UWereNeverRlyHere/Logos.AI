@@ -1,5 +1,6 @@
 ﻿using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
+using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.RAG;
 using Logos.AI.Engine.Reasoning;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public static class LogosEngineExtensions
 		builder.Services.AddSingleton<RagQueryService>();
 		
 		builder.Services.AddScoped<SqlChunkLoaderService>();
-		builder.Services.AddScoped<PdfService>();
+		builder.Services.AddScoped<PdfChunkService>();
 		
 		builder.Services.AddScoped<ContextExtractorService>();
 		builder.Services.AddScoped<ClinicalReasoningService>();

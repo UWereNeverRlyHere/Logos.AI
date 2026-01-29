@@ -3,6 +3,7 @@ using System.Text.Json;
 using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Abstractions.Features.PatientAnalysis;
 using Logos.AI.Abstractions.Features.RAG;
+using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.RAG;
 using Logos.AI.Engine.Reasoning;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,7 @@ public class RagController(
 	QdrantService            qdrantService,
 	RagQueryService          queryService,
 	OpenAiEmbeddingService   embeddingService,
-	PdfService               pdfService,
+	PdfChunkService               pdfChunkService,
 	ContextExtractorService  contextExtractorService,
 	ClinicalReasoningService clinicalReasoningService,
 	IConfiguration           config) : Controller
@@ -165,17 +166,13 @@ public class RagController(
 
 			// 2. Парсимо PDF (зберігаючи номери сторінок!)
 			// Це CPU-bound операція
-			var rawPages = pdfService.ExtractTextWithPages(filePath);
-
-			if (rawPages.Count == 0)
+			// 3. Нарізаємо на чанки
+			if (!pdfChunkService.TryChunkDocument(filePath, out var chunks, out var error))
 			{
-				ViewBag.Message = "Could not extract text from PDF (it might be an image scan).";
+				ViewBag.Message = error;
 				return await Index();
 			}
-
-			// 3. Нарізаємо на чанки
-			var chunks = pdfService.ChunkTextWithPages(rawPages);
-
+			
 			// 4. Зберігаємо в SQL (Архів + Метадані)
 			// Повертає ID документа, який ми використаємо для зв'язку в Qdrant
 			var documentId = await sqlChunkLoaderService.SaveDocumentAsync(file.FileName, filePath, chunks);
