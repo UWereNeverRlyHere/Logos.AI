@@ -12,7 +12,7 @@ namespace Logos.AI.API.Controllers;
 
 [Route("rag")]
 public class RagController(
-	SqlChunkLoaderService    sqlChunkLoaderService,
+	SqlChunkService    sqlChunkService,
 	QdrantService            qdrantService,
 	RagQueryService          queryService,
 	OpenAiEmbeddingService   embeddingService,
@@ -26,7 +26,7 @@ public class RagController(
 	public async Task<IActionResult> Index()
 	{
 		// Завантажуємо список документів з SQL (це наше джерело правди для списків)
-		var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+		var docs = await sqlChunkService.GetAllDocumentsAsync();
 		ViewBag.AllDocuments = docs;
 
 		// Повертаємо пустий список результатів, щоб View не ламалася
@@ -118,7 +118,7 @@ public class RagController(
 			}
 
 			// 3. Оновлюємо список документів для сайдбару
-			var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+			var docs = await sqlChunkService.GetAllDocumentsAsync();
 			ViewBag.AllDocuments = docs;
 
 			return View("Index", results);
@@ -126,7 +126,7 @@ public class RagController(
 		catch (Exception ex)
 		{
 			ViewBag.Message = $"Error during search: {ex.Message}";
-			var docs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+			var docs = await sqlChunkService.GetAllDocumentsAsync();
 			ViewBag.AllDocuments = docs;
 			return View("Index", new List<KnowledgeChunk>());
 		}
@@ -175,7 +175,7 @@ public class RagController(
 			
 			// 4. Зберігаємо в SQL (Архів + Метадані)
 			// Повертає ID документа, який ми використаємо для зв'язку в Qdrant
-			var documentId = await sqlChunkLoaderService.SaveDocumentAsync(file.FileName, filePath, chunks);
+			var documentId = await sqlChunkService.SaveDocumentAsync(file.FileName, filePath, chunks);
 
 			// 5. Векторизація та збереження в Qdrant
 
@@ -218,7 +218,7 @@ public class RagController(
 		}
 
 		// Оновлюємо список документів і повертаємо View
-		var finalDocs = await sqlChunkLoaderService.GetAllDocumentsAsync();
+		var finalDocs = await sqlChunkService.GetAllDocumentsAsync();
 		ViewBag.AllDocuments = finalDocs;
 
 		return View("Index", new List<KnowledgeChunk>());

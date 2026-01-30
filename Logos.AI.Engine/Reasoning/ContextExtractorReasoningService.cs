@@ -1,7 +1,9 @@
 ﻿using System.Text.Json;
 using Logos.AI.Abstractions.Features.PatientAnalysis;
+using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 namespace Logos.AI.Engine.Reasoning;
 
@@ -10,16 +12,17 @@ public class ContextExtractorService
     private readonly ChatClient _chatClient;
     private readonly ILogger<ContextExtractorService> _logger;
     private readonly string _systemPrompt; 
-
+    private readonly LlmOptions _options;
     public ContextExtractorService(
+        IOptions<OpenAiOptions> options,
         ChatClient chatClient, 
         IHostEnvironment env, 
         ILogger<ContextExtractorService> logger)
     {
         _chatClient = chatClient;
         _logger = logger;
-
-        var promptPath = Path.Combine(env.ContentRootPath, "PromptKnowledgeBase", "ContextExtractorPrompt.txt");
+        _options = options.Value.ContextExtractionReasoning;
+        var promptPath = Path.Combine(env.ContentRootPath, "PromptKnowledgeBase", _options.PromptFile);
         if (!File.Exists(promptPath))
         {
             throw new FileNotFoundException($"Critical error: Prompt file not found at {promptPath}");
@@ -36,9 +39,9 @@ public class ContextExtractorService
     {
         var options = new ChatCompletionOptions
         {
-            Temperature = 0.1f,
-            TopP = 0.9f,
-            MaxOutputTokenCount = 1000
+            Temperature = _options.Temperature,
+            TopP = _options.TopP,
+            MaxOutputTokenCount = _options.MaxTokens
         };
 
         var messages = new List<ChatMessage>

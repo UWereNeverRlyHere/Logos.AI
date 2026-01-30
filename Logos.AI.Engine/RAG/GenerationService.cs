@@ -1,6 +1,6 @@
 ﻿namespace Logos.AI.Engine.RAG;
-
-public class Generation
+//Retrieval Augmented Generation — генерация ответа пользователю с учетом дополнительно найденной релевантной информации.
+public class GenerationService
 {
 	
 }

@@ -18,19 +18,19 @@ public static class LogosEngineExtensions
 	{
 		var connectionString = builder.Configuration.GetConnectionString("LogosDatabase");
 		builder.Services.AddDbContext<LogosDbContext>(options => options.UseSqlite(connectionString));
-		
+
 		builder.Services.AddHttpClient<OpenAiEmbeddingService>();
 		builder.Services.AddSingleton<QdrantService>();
 		builder.Services.AddSingleton<RagQueryService>();
-		
-		builder.Services.AddScoped<SqlChunkLoaderService>();
+
+		builder.Services.AddScoped<SqlChunkService>();
 		builder.Services.AddScoped<PdfChunkService>();
-		
+
 		builder.Services.AddScoped<ContextExtractorService>();
 		builder.Services.AddScoped<ClinicalReasoningService>();
 
 		builder.ConfigureOptions();
-		
+
 		// Реєстрація ChatClient
 		builder.Services.AddSingleton<ChatClient>(sp =>
 		{

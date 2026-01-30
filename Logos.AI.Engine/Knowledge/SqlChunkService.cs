@@ -2,14 +2,13 @@
 using Logos.AI.Engine.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
-namespace Logos.AI.Engine.RAG;
+namespace Logos.AI.Engine.Knowledge;
 
 /// <summary>
 /// Сервіс для збереження "сирих" текстів та метаданих у SQLite.
 /// Це наш "холодний" архів, з якого можна відновити Qdrant.
 /// </summary>
-public class SqlChunkLoaderService(LogosDbContext dbContext, ILogger<SqlChunkLoaderService> logger)
+public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> logger)
 {
 	/// <summary>
 	/// Зберігає документ та його фрагменти в базу.
