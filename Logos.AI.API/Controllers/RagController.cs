@@ -17,7 +17,7 @@ public class RagController(
 	RagQueryService          queryService,
 	OpenAiEmbeddingService   embeddingService,
 	PdfChunkService               pdfChunkService,
-	ContextExtractorService  contextExtractorService,
+	MedicalContextReasoningService  medicalContextReasoningService,
 	ClinicalReasoningService clinicalReasoningService,
 	IConfiguration           config) : Controller
 {
@@ -35,12 +35,17 @@ public class RagController(
 	[HttpPost("TestVectorSearch")]
 	public async Task<IActionResult> TestVectorSearch([FromBody] AnalyzePatientRequest reqData)
 	{
-		var extractedContext = await contextExtractorService.ExtractAsync(reqData);
-		var result = new TestVectorSearchResult(extractedContext);
+		var processedContext = await medicalContextReasoningService.ProcessAsync(reqData);
+		var result = new TestVectorSearchResult(processedContext.Queries);
+		result.ExtractedContext.Add("Ниркова недостатність");
+		result.ExtractedContext.Add("Гіперкреатинінемія");
+		result.ExtractedContext.Add("Гіперурикемія");
+		result.ExtractedContext.Add("Протокол лікування хронічної хвороби нирок");
+		result.ExtractedContext.Add("Протокол лікування підвищеного рівня сечової кислоти");
 		try
 		{
 			await qdrantService.EnsureCollectionAsync();
-			foreach (var context in extractedContext)
+			foreach (var context in result.ExtractedContext)
 			{
 				var results = await queryService.SearchAsync(context);
 				result.AddResults(results);
@@ -58,12 +63,12 @@ public class RagController(
 	[HttpPost("TestClinicalReasoning")]
 	public async Task<IActionResult> TestClinicalReasoning([FromBody] AnalyzePatientRequest reqData)
 	{
-		var extractedContext = await contextExtractorService.ExtractAsync(reqData);
-		var result = new TestVectorSearchResult(extractedContext);
+		var processedContext = await medicalContextReasoningService.ProcessAsync(reqData);
+		var result = new TestVectorSearchResult(processedContext.Queries);
 		try
 		{
 			await qdrantService.EnsureCollectionAsync();
-			foreach (var context in extractedContext)
+			foreach (var context in result.ExtractedContext)
 			{
 				var results = await queryService.SearchAsync(context);
 				result.AddResults(results);

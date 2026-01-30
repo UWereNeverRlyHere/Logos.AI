@@ -6,7 +6,7 @@ public record OpenAiOptions
 	public string Model { get; init; } = "gpt-4o-mini";
 	public string ApiKey { get; init; } = string.Empty;
 	public LlmOptions ClinicalReasoning { get; init; } = new();
-	public LlmOptions ContextExtractionReasoning { get; init; } = new();
+	public LlmOptions MedicalContextReasoning { get; init; } = new();
 	public EmbeddingOptions Embedding { get; init; } = new();
 }
 

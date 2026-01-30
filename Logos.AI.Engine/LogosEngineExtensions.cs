@@ -1,4 +1,4 @@
-﻿using Logos.AI.Engine.Configuration;
+﻿﻿using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.RAG;
@@ -26,7 +26,7 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<SqlChunkService>();
 		builder.Services.AddScoped<PdfChunkService>();
 
-		builder.Services.AddScoped<ContextExtractorService>();
+		builder.Services.AddScoped<MedicalContextReasoningService>();
 		builder.Services.AddScoped<ClinicalReasoningService>();
 
 		builder.ConfigureOptions();

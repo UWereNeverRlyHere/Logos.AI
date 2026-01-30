@@ -1,5 +1,5 @@
 ﻿using Logos.AI.Abstractions.Features.Validation;
-namespace Logos.AI.Engine.Features.Validation;
+namespace Logos.AI.Engine.Validation;
 /// <summary>
 /// Індекс Херфіндаля-Хіршмана (HHI)
 /// </summary>
