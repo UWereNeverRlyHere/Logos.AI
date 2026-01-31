@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
@@ -25,31 +26,62 @@ public class PdfChunkService
 		_chunkOverlapWords = ragOptions.ChunkOverlapWords;
 	}
 
-	public bool TryChunkDocument(string filePath, out List<(int Page, string Text)> chunks, out string error)
+// Змінюємо сигнатуру методу: додаємо out string docTitle
+	public bool TryChunkDocument(string filePath, out SimpleDocumentChunk simpleDocumentChunk, out string error)
 	{
 		error = string.Empty;
-		chunks = new List<(int Page, string Text)>();
+		simpleDocumentChunk = new SimpleDocumentChunk(Path.GetFileName(filePath));
 		try
 		{
 			var rawPages = ExtractTextWithPages(filePath);
 			if (rawPages.Count == 0)
 			{
-				error = "Could not extract text from PDF (it might be an image scan).";
+				error = "Could not extract text from PDF.";
 				return false;
 			}
-			chunks = ChunkTextWithPages(rawPages);
+			if (rawPages.Count > 0)
+			{
+				simpleDocumentChunk.SetTitleIfNotEmpty(ExtractTitleFromFirstPage(rawPages[0].Content));
+			}
+			// -------------------------------
+			simpleDocumentChunk.AddChunks(ChunkTextWithPages(rawPages));
 			return true;
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			error = $"Failed to parse PDF: {e.Message}";
+			error = ex.Message;
 			return false;
 		}
 	}
 
-	private List<(int Page, string Text)> ExtractTextWithPages(string filePath)
+// Додаємо приватний метод-евристику
+	private string ExtractTitleFromFirstPage(string text)
 	{
-		var result = new List<(int Page, string Text)>();
+		// Розбиваємо на рядки
+		var lines = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+			.Select(l => l.Trim())
+			.Where(l => !string.IsNullOrWhiteSpace(l))
+			.ToList();
+
+		// Евристика 1: Шукаємо рядок, що починається на "Настанова" (найточніше для МОЗ)
+		var guidelineLine = lines.FirstOrDefault(l => l.StartsWith("Настанова", StringComparison.OrdinalIgnoreCase));
+		if (guidelineLine != null) return guidelineLine;
+		
+		// Евристика 2: Якщо немає "Настанова", беремо перші 1-2 рядки, які не є технічними
+		// Ігноруємо рядки типу "--- PAGE 1 ---" або URL
+		var cleanLines = lines.Where(l =>
+				!l.StartsWith("--- PAGE") &&
+				!l.StartsWith("http") &&
+				l.Length > 5 // Ігноруємо надто короткі "сміттєві" рядки
+		).Take(2).ToList();
+
+		if (cleanLines.Count > 0) return string.Join(". ", cleanLines); // Об'єднуємо заголовок і підзаголовок
+		return string.Empty;
+	}
+
+	private List<SimpleChunk> ExtractTextWithPages(string filePath)
+	{
+		var result = new List<SimpleChunk>();
 		try
 		{
 			using var document = PdfDocument.Open(filePath);
@@ -58,7 +90,7 @@ public class PdfChunkService
 				var text = ContentOrderTextExtractor.GetText(page);
 				if (!string.IsNullOrWhiteSpace(text))
 				{
-					result.Add((page.Number, text));
+					result.Add(new SimpleChunk(page.Number, text));
 				}
 			}
 		}
@@ -73,15 +105,15 @@ public class PdfChunkService
 	/// Умная нарезка текста (Recursive Chunking) с сохранением страниц.
 	/// Старается не разрывать предложения.
 	/// </summary>
-	private List<(int Page, string Chunk)> ChunkTextWithPages(List<(int Page, string Text)> pages)
+	private List<SimpleChunk> ChunkTextWithPages(List<SimpleChunk> pages)
 	{
-		var result = new List<(int Page, string Chunk)>();
+		var result = new List<SimpleChunk>();
 
-		foreach (var (pageNumber, pageText) in pages)
+		foreach (var page in pages)
 		{
 			// 1. Разбиваем страницу на предложения (грубо)
 			// Мы используем простой подход: сплитим по точке, но восстанавливаем точку в конце.
-			var rawSentences = SplitIntoSentences(pageText);
+			var rawSentences = SplitIntoSentences(page.Content);
 
 			var currentChunk = new StringBuilder();
 			var currentWordCount = 0;
@@ -98,7 +130,7 @@ public class PdfChunkService
 				if (currentWordCount + sentenceWordCount > _chunkSizeWords && currentWordCount > 0)
 				{
 					// 1. Сохраняем текущий чанк
-					result.Add((pageNumber, currentChunk.ToString().Trim()));
+					result.Add(new SimpleChunk(page.PageNumber, currentChunk.ToString().Trim()));
 
 					// 2. Начинаем новый чанк
 					currentChunk.Clear();
@@ -133,7 +165,7 @@ public class PdfChunkService
 			// Добавляем остаток (последний чанк на странице)
 			if (currentChunk.Length > 0)
 			{
-				result.Add((pageNumber, currentChunk.ToString().Trim()));
+				result.Add(new SimpleChunk(page.PageNumber, currentChunk.ToString().Trim()));
 			}
 		}
 

@@ -1,4 +1,5 @@
 ﻿using Logos.AI.Abstractions.Domain.Knowledge;
+using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Engine.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 	public async Task<Guid> SaveDocumentAsync(
 		string                        fileName,
 		string                        filePath,
-		List<(int Page, string Text)> chunksWithPages,
+		SimpleDocumentChunk simpleDocumentChunk,
 		CancellationToken             ct = default)
 	{
 		// 1. Перевірка дублікатів
@@ -41,13 +42,13 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 		};
 
 		// 3. Мапінг чанків з правильними сторінками
-		var chunksEntities = chunksWithPages.Select(c => new DocumentChunk
+		var chunksEntities = simpleDocumentChunk.Chunks.Select(c => new DocumentChunk
 		{
 			Id = Guid.NewGuid(),
 			DocumentId = document.Id,
-			PageNumber = c.Page, 
-			Content = c.Text,
-			TokenCount = c.Text.Length / 4
+			PageNumber = c.PageNumber, 
+			Content = c.Content,
+			TokenCount = c.Content.Length / 4
 		}).ToList();
 
 		document.Chunks = chunksEntities;

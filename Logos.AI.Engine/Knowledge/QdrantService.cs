@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-namespace Logos.AI.Engine.RAG;
+namespace Logos.AI.Engine.Knowledge;
 
 public class QdrantService
 {
@@ -92,8 +92,9 @@ public class QdrantService
             {
                 DocumentId = TryGetGuid(p, "documentId"),
                 FileName = TryGetString(p, "fileName"),
+                DocumentTitle = TryGetString(p, "documentTitle"),
                 PageNumber = TryGetInt(p, "pageNumber"),
-                Content = TryGetString(p, "fullText"),
+                Content = TryGetString(p, "content"),
                 Score = point.Score
             });
         }

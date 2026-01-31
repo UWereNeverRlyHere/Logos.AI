@@ -1,5 +1,4 @@
 ﻿using Logos.AI.Engine.Configuration;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using OpenAI.Embeddings;
 namespace Logos.AI.Engine.RAG;

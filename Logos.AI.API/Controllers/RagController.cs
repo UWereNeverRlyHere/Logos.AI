@@ -45,10 +45,14 @@ public class RagController(
 		try
 		{
 			await qdrantService.EnsureCollectionAsync();
-			foreach (var context in result.ExtractedContext)
+			var searchTasks = result.ExtractedContext
+				.Select(context => queryService.SearchAsync(context))
+				.ToList();
+
+			var results = await Task.WhenAll(searchTasks);
+			foreach (var r in results)
 			{
-				var results = await queryService.SearchAsync(context);
-				result.AddResults(results);
+				result.AddResults(r);
 			}
 		}
 		catch (Exception e)
@@ -68,10 +72,13 @@ public class RagController(
 		try
 		{
 			await qdrantService.EnsureCollectionAsync();
-			foreach (var context in result.ExtractedContext)
+			var searchTasks = result.ExtractedContext
+				.Select(context => queryService.SearchAsync(context))
+				.ToList();
+			var results = await Task.WhenAll(searchTasks);
+			foreach (var r in results)
 			{
-				var results = await queryService.SearchAsync(context);
-				result.AddResults(results);
+				result.AddResults(r);
 			}
 		}
 		catch (Exception e)
@@ -164,7 +171,7 @@ public class RagController(
 			var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
 			var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-			using (var fs = new FileStream(filePath, FileMode.Create))
+			await using (var fs = new FileStream(filePath, FileMode.Create))
 			{
 				await file.CopyToAsync(fs);
 			}
@@ -172,7 +179,7 @@ public class RagController(
 			// 2. Парсимо PDF (зберігаючи номери сторінок!)
 			// Це CPU-bound операція
 			// 3. Нарізаємо на чанки
-			if (!pdfChunkService.TryChunkDocument(filePath, out var chunks, out var error))
+			if (!pdfChunkService.TryChunkDocument(filePath, out var chunkResult, out var error))
 			{
 				ViewBag.Message = error;
 				return await Index();
@@ -180,7 +187,7 @@ public class RagController(
 			
 			// 4. Зберігаємо в SQL (Архів + Метадані)
 			// Повертає ID документа, який ми використаємо для зв'язку в Qdrant
-			var documentId = await sqlChunkService.SaveDocumentAsync(file.FileName, filePath, chunks);
+			var documentId = await sqlChunkService.SaveDocumentAsync(file.FileName, filePath, chunkResult);
 
 			// 5. Векторизація та збереження в Qdrant
 
@@ -188,12 +195,12 @@ public class RagController(
 			await qdrantService.EnsureCollectionAsync();
 
 			// Це IO-bound операція (OpenAI API + Qdrant API)
-			for (int i = 0; i < chunks.Count; i++)
+			for (int i = 0; i < chunkResult.Chunks.Count; i++)
 			{
-				var (page, text) = chunks[i];
+				var chunk= chunkResult.Chunks[i];
 
 				// А. Отримуємо вектор
-				var embList = await embeddingService.GetEmbeddingAsync(text);
+				var embList = await embeddingService.GetEmbeddingAsync(chunk.Content);
 				var vector = embList.ToArray();
 
 				// Б. Формуємо ID точки (щоб був стабільним)
@@ -203,18 +210,18 @@ public class RagController(
 				var payload = new Dictionary<string, object>
 				{
 					["documentId"] = documentId.ToString(),
+					["documentTitle"] = chunkResult.DocumentTitle,
 					["fileName"] = file.FileName,
-					["pageNumber"] = page, // Важливо: номер сторінки
+					["pageNumber"] = chunk.PageNumber,
 					["chunkIndex"] = i,
-					["fullText"] = text, // Важливо: повний текст для LLM
-					["preview"] = text.Length > 200 ? text.Substring(0, 200) + "..." : text
+					["content"] = chunk.Content, 
 				};
 
 				// Г. Відправляємо в Qdrant
 				await qdrantService.UpsertChunkAsync(pointId, vector, payload);
 			}
 
-			ViewBag.Message = $"Success! Uploaded '{file.FileName}', saved to SQL, and indexed {chunks.Count} chunks in Qdrant.";
+			ViewBag.Message = $"Success! Uploaded '{file.FileName}', saved to SQL, and indexed {chunkResult.Chunks.Count} chunks in Qdrant.";
 		}
 		catch (Exception ex)
 		{

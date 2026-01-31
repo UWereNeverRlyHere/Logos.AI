@@ -1,5 +1,6 @@
 ﻿using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Engine.Configuration;
+using Logos.AI.Engine.Knowledge;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
