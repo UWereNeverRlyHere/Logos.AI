@@ -1,5 +1,4 @@
-﻿using Logos.AI.Abstractions.Domain.Diagnostics;
-namespace Logos.AI.Abstractions.Features.Validation;
+﻿namespace Logos.AI.Abstractions.Validation;
 
 public record BiologicalValidationResult
 {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Text.Json.Serialization;
-namespace Logos.AI.Abstractions.Features.Reasoning;
+namespace Logos.AI.Abstractions.Reasoning;
 
 public record MedicalContextReasoningResult
 {

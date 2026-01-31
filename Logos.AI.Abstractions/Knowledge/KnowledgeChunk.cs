@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
-namespace Logos.AI.Abstractions.Features.Knowledge;
+namespace Logos.AI.Abstractions.Knowledge;
 
 /// <summary>
-/// Представляє фрагмент знань (чанк), знайдений у базі даних.
+/// Представляє фрагмент знань (чанк), що зберігається у базі даних.
 /// Містить текст, метадані джерела та оцінку релевантності.
 /// </summary>
 public record KnowledgeChunk

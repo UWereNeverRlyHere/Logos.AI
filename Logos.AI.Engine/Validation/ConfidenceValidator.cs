@@ -1,4 +1,4 @@
-﻿using Logos.AI.Abstractions.Features.Validation;
+﻿using Logos.AI.Abstractions.Validation;
 using Logos.AI.Engine.RAG;
 using Microsoft.Extensions.Logging;
 namespace Logos.AI.Engine.Validation;

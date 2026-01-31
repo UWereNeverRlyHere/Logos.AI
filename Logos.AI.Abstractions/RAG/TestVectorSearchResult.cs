@@ -1,5 +1,5 @@
-﻿using Logos.AI.Abstractions.Features.Knowledge;
-namespace Logos.AI.Abstractions.Features.RAG;
+﻿using Logos.AI.Abstractions.Knowledge;
+namespace Logos.AI.Abstractions.RAG;
 
 public record TestVectorSearchResult
 {

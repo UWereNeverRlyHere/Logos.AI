@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
-using Logos.AI.Abstractions.Features.PatientAnalysis;
-using Logos.AI.Abstractions.Features.Reasoning;
+using Logos.AI.Abstractions.PatientAnalysis;
+using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Extensions;
 using Microsoft.Extensions.Hosting;

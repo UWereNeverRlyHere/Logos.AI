@@ -1,5 +1,5 @@
-﻿using Logos.AI.Abstractions.Features.Knowledge.Contracts;
-using Logos.AI.Abstractions.Features.RAG;
+﻿using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
+using OpenAI.Embeddings;
 using Qdrant.Client;
 namespace Logos.AI.Engine.Extensions;
 
@@ -22,17 +23,16 @@ public static class LogosEngineExtensions
 		var connectionString = builder.Configuration.GetConnectionString("LogosDatabase");
 		builder.Services.AddDbContext<LogosDbContext>(options => options.UseSqlite(connectionString));
 
-		builder.Services.AddHttpClient<OpenAIEmbeddingService>();
-		builder.Services.AddSingleton<QdrantService>();
-		builder.Services.AddSingleton<RagQueryService>();
+		builder.Services.AddScoped<QdrantService>();
 
+		builder.Services.AddScoped<OpenAIEmbeddingService>();
 		builder.Services.AddScoped<SqlChunkService>();
 		builder.Services.AddScoped<PdfChunkService>();
 
 		builder.Services.AddScoped<MedicalContextReasoningService>();
 		builder.Services.AddScoped<ClinicalReasoningService>();
-		builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
-		builder.Services.AddScoped<IAugmentationService, AugmentationService>();
+		builder.Services.AddScoped<IIngestionService, IngestionService>();
+		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
 
 		builder.ConfigureOptions();
 
@@ -46,7 +46,11 @@ public static class LogosEngineExtensions
 			var options = sp.GetRequiredService<IOptions<RagOptions>>().Value;
 			return new QdrantClient(options.Qdrant.Host, options.Qdrant.Port);
 		});
-		
+		builder.Services.AddSingleton<EmbeddingClient>(sp =>
+		{
+			var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
+			return new EmbeddingClient(options.Embedding.Model, options.ApiKey);
+		});
 	}
 
 	private static void ConfigureOptions(this IHostApplicationBuilder builder)

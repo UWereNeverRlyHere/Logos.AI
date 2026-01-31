@@ -1,9 +1,9 @@
 ﻿using System.Text;
 using System.Text.Json;
-using Logos.AI.Abstractions.Features.Knowledge;
-using Logos.AI.Abstractions.Features.Knowledge.Contracts;
-using Logos.AI.Abstractions.Features.PatientAnalysis;
-using Logos.AI.Abstractions.Features.RAG;
+using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.PatientAnalysis;
+using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
@@ -14,13 +14,13 @@ namespace Logos.AI.API.Controllers;
 
 [Route("rag")]
 public class RagController(
-	SqlChunkService    sqlChunkService,
-	QdrantService            qdrantService,
-	RagQueryService          queryService,
-	MedicalContextReasoningService  medicalContextReasoningService,
-	ClinicalReasoningService clinicalReasoningService,
-	IKnowledgeService knowledgeService,
-	IConfiguration           config) : Controller
+	SqlChunkService                sqlChunkService,
+	QdrantService                  qdrantService,
+	IRetrievalAugmentationService  iRetrievalAugmentationService,
+	MedicalContextReasoningService medicalContextReasoningService,
+	ClinicalReasoningService       clinicalReasoningService,
+	IIngestionService              ingestionService,
+	IConfiguration                 config) : Controller
 {
 	// GET: rag/index
 	[HttpGet("index")]
@@ -38,16 +38,12 @@ public class RagController(
 	{
 		var processedContext = await medicalContextReasoningService.ProcessAsync(reqData);
 		var result = new TestVectorSearchResult(processedContext.Queries);
-		result.ExtractedContext.Add("Ниркова недостатність");
-		result.ExtractedContext.Add("Гіперкреатинінемія");
-		result.ExtractedContext.Add("Гіперурикемія");
-		result.ExtractedContext.Add("Протокол лікування хронічної хвороби нирок");
-		result.ExtractedContext.Add("Протокол лікування підвищеного рівня сечової кислоти");
+
 		try
 		{
 			await qdrantService.EnsureCollectionAsync();
 			var searchTasks = result.ExtractedContext
-				.Select(context => queryService.SearchAsync(context))
+				.Select(context => iRetrievalAugmentationService.SearchAsync(context))
 				.ToList();
 
 			var results = await Task.WhenAll(searchTasks);
@@ -74,7 +70,7 @@ public class RagController(
 		{
 			await qdrantService.EnsureCollectionAsync();
 			var searchTasks = result.ExtractedContext
-				.Select(context => queryService.SearchAsync(context))
+				.Select(context => iRetrievalAugmentationService.SearchAsync(context))
 				.ToList();
 			var results = await Task.WhenAll(searchTasks);
 			foreach (var r in results)
@@ -107,7 +103,7 @@ public class RagController(
 			await qdrantService.EnsureCollectionAsync();
 
 			// 1. Виконуємо пошук через RagQueryService
-			var results = await queryService.SearchAsync(query);
+			var results = await iRetrievalAugmentationService.SearchAsync(query);
 
 			// 2. Форматуємо результати для відображення (так як немає LLM генерації)
 			if (results.Count > 0)
@@ -177,7 +173,7 @@ public class RagController(
 				await file.CopyToAsync(fs);
 			}
 
-			var res =await knowledgeService.IngestFileAsync(new IngestionUploadData(filePath));
+			var res =await ingestionService.IngestFileAsync(new IngestionUploadData(filePath));
 
 			if (res.IsSuccess) return Ok(new { message = $"Uploaded {file.FileName}", chunks = res.ChunksCount });
 			return BadRequest(res.Message);

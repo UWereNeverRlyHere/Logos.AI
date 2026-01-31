@@ -1,4 +1,4 @@
-﻿namespace Logos.AI.Abstractions.Domain.Diagnostics;
+﻿namespace Logos.AI.Abstractions.Diagnostics;
 
 public record PatientMetaData
 {

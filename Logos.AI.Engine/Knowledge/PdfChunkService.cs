@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;

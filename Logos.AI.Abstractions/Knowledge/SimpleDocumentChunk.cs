@@ -1,7 +1,9 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-namespace Logos.AI.Abstractions.Features.Knowledge;
-
+namespace Logos.AI.Abstractions.Knowledge;
+/// <summary>
+/// Запис для проміжного результату після, розбиття документу на чанки
+/// </summary>
 public record SimpleDocumentChunk
 {
 	/// <summary>

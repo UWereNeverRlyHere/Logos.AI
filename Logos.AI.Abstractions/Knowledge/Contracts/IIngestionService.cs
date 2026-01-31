@@ -1,6 +1,6 @@
-﻿namespace Logos.AI.Abstractions.Features.Knowledge.Contracts;
+﻿namespace Logos.AI.Abstractions.Knowledge.Contracts;
 
-public interface IKnowledgeService
+public interface IIngestionService
 {
 	/// <summary>
 	/// Завантаження одного документу

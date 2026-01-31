@@ -1,5 +1,5 @@
 ﻿using Google.Protobuf.Collections;
-using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,12 +23,16 @@ public class QdrantService
     }
     public async Task EnsureCollectionAsync(CancellationToken ct = default)
     {
+        _logger.LogInformation("Ensuring Qdrant collection '{CollectionName}' exists...", _collectionName);
         var collections = await _client.ListCollectionsAsync(ct);
         if (!collections.Contains(_collectionName))
         {
-            await _client.CreateCollectionAsync(_collectionName,
-                new VectorParams { Size = (ulong)_vectorSize, Distance = Distance.Cosine },
-                cancellationToken: ct);
+            await _client.CreateCollectionAsync(_collectionName, new VectorParams { Size = (ulong)_vectorSize, Distance = Distance.Cosine }, cancellationToken: ct);
+            _logger.LogInformation("Qdrant collection '{CollectionName}' created", _collectionName);
+        }
+        else
+        {
+            _logger.LogInformation("Qdrant collection '{CollectionName}' already exists", _collectionName);
         }
     }
     public async Task UpsertChunkAsync(string pointId, float[] vector, Dictionary<string, object> payload, CancellationToken ct = default)
@@ -38,19 +42,19 @@ public class QdrantService
         {
             qdrantPayload.Add(kvp.Key, kvp.Value.ToQdrantValue());
         }
-  
         var point = new PointStruct
         {
             Id = QdrantMapper.GenerateGuidFromSeed(pointId),
             Vectors = vector,
             Payload = { qdrantPayload }
         };
-
         await _client.UpsertAsync(_collectionName, [point], cancellationToken: ct);
     }
 
     public async Task<List<KnowledgeChunk>> SearchAsync(float[] vector, CancellationToken ct = default)
     {
+        _logger.LogInformation("Searching Qdrant with threshold {OptionsMinScore}...", _options.MinScore);
+
         /*var filter = new Filter
         {
             Must = { // "Must" означає "AND"
@@ -85,6 +89,8 @@ public class QdrantService
             var p = point.Payload;
             chunks.Add(p.ToKnowledgeDictionary().ToChunk(point.Score));
         }
+        _logger.LogInformation("Found {Count} chunks above threshold", results.Count);
+
         return chunks;
     }
 }

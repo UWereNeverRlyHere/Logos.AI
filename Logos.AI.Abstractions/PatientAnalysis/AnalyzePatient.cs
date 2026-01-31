@@ -1,5 +1,5 @@
-﻿using Logos.AI.Abstractions.Domain.Diagnostics;
-namespace Logos.AI.Abstractions.Features.PatientAnalysis;
+﻿using Logos.AI.Abstractions.Diagnostics;
+namespace Logos.AI.Abstractions.PatientAnalysis;
 
 public record AnalyzePatientRequest
 {

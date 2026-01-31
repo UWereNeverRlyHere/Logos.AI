@@ -1,4 +1,4 @@
-﻿namespace Logos.AI.Abstractions.Domain.Knowledge;
+﻿namespace Logos.AI.Abstractions.Knowledge;
 
 public sealed class Document
 {

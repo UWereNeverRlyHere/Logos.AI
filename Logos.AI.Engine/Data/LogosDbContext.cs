@@ -1,4 +1,4 @@
-﻿using Logos.AI.Abstractions.Domain.Knowledge;
+﻿using Logos.AI.Abstractions.Knowledge;
 using Microsoft.EntityFrameworkCore;
 
 namespace Logos.AI.Engine.Data;
