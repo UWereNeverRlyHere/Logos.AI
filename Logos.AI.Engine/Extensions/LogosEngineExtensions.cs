@@ -30,7 +30,7 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<PdfChunkService>();
 
 		builder.Services.AddScoped<MedicalContextReasoningService>();
-		builder.Services.AddScoped<ClinicalReasoningService>();
+		builder.Services.AddScoped<MedicalAnalyzingReasoningService>();
 		builder.Services.AddScoped<IIngestionService, IngestionService>();
 		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
 

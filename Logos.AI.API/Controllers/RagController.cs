@@ -18,7 +18,7 @@ public class RagController(
 	QdrantService                  qdrantService,
 	IRetrievalAugmentationService  iRetrievalAugmentationService,
 	MedicalContextReasoningService medicalContextReasoningService,
-	ClinicalReasoningService       clinicalReasoningService,
+	MedicalAnalyzingReasoningService       medicalAnalyzingReasoningService,
 	IIngestionService              ingestionService,
 	IConfiguration                 config) : Controller
 {
@@ -34,9 +34,9 @@ public class RagController(
 		return View("Index", new List<KnowledgeChunk>());
 	}
 	[HttpPost("TestVectorSearch")]
-	public async Task<IActionResult> TestVectorSearch([FromBody] AnalyzePatientRequest reqData)
+	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeLlmRequest reqData)
 	{
-		var processedContext = await medicalContextReasoningService.ProcessAsync(reqData);
+		var processedContext = await medicalContextReasoningService.AnalyzeAsync(reqData);
 		var result = new TestVectorSearchResult(processedContext.Queries);
 
 		try
@@ -62,9 +62,9 @@ public class RagController(
 	}
 
 	[HttpPost("TestClinicalReasoning")]
-	public async Task<IActionResult> TestClinicalReasoning([FromBody] AnalyzePatientRequest reqData)
+	public async Task<IActionResult> TestClinicalReasoning([FromBody] PatientAnalyzeLlmRequest reqData)
 	{
-		var processedContext = await medicalContextReasoningService.ProcessAsync(reqData);
+		var processedContext = await medicalContextReasoningService.AnalyzeAsync(reqData);
 		var result = new TestVectorSearchResult(processedContext.Queries);
 		try
 		{
@@ -84,7 +84,7 @@ public class RagController(
 			throw;
 		}
 		result.SortByScore();
-		var answer = await clinicalReasoningService.AnalyzeAsync(JsonSerializer.Serialize(reqData), result.Results);
+		var answer = await medicalAnalyzingReasoningService.AnalyzeAsync(JsonSerializer.Serialize(reqData), result.Results);
 
 		return Ok(answer);
 	}

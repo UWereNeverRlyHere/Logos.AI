@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using Logos.AI.Abstractions.PatientAnalysis;
-using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -23,7 +22,7 @@ public class MedicalContextReasoningService
 	{
 		_chatClient = chatClient;
 		_logger = logger;
-		_options = options.Value.MedicalContextReasoning;
+		_options = options.Value.MedicalContext;
 		var promptPath = Path.Combine(env.ContentRootPath, "PromptKnowledgeBase", _options.PromptFile);
 		if (!File.Exists(promptPath))
 		{
@@ -32,12 +31,12 @@ public class MedicalContextReasoningService
 
 		_systemPrompt = File.ReadAllText(promptPath);
 	}
-	public async Task<MedicalContextReasoningResult> ProcessAsync(AnalyzePatientRequest patientJson)
+	public async Task<MedicalContextLlmResponse> AnalyzeAsync(PatientAnalyzeLlmRequest llmJson)
 	{
-		return await ProcessAsync(JsonSerializer.Serialize(patientJson));
+		return await AnalyzeAsync(JsonSerializer.Serialize(llmJson));
 	}
 
-	public async Task<MedicalContextReasoningResult> ProcessAsync(string patientJson)
+	public async Task<MedicalContextLlmResponse> AnalyzeAsync(string patientJson)
 	{
 		try
 		{
@@ -46,13 +45,15 @@ public class MedicalContextReasoningService
 				Temperature = _options.Temperature,
 				TopP = _options.TopP,
 				MaxOutputTokenCount = _options.MaxTokens,
-				// ReasoningEffortLevel = ChatReasoningEffortLevel.High //Experimental option
+				IncludeLogProbabilities = true,
+				TopLogProbabilityCount = _options.TopLogProbabilityCount,
 				FrequencyPenalty = 0, //Штрафує за часте повторення слів.
 				PresencePenalty = 0, //Штрафує за те, що слово взагалі вже було в тексті. Змушує постійно змінювати тему
+				// ReasoningEffortLevel = ChatReasoningEffortLevel.High //Experimental option
 				//WebSearchOptions //Experimental
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_context",
-					jsonSchema: LogosJsonExtensions.GetSchemaFromType<MedicalContextReasoningResult>(false),
+					jsonSchema: LogosJsonExtensions.GetSchemaFromType<MedicalContextLlmResponse>(false),
 					jsonSchemaFormatDescription: "Результат аналізу медичного контексту",
 					jsonSchemaIsStrict: true // Це змусить модель суворо дотримуватися схеми
 				),
@@ -61,14 +62,6 @@ public class MedicalContextReasoningService
 				//Seed = 45,//"Зерно" випадковості. Якщо передати одне й те саме число (наприклад 12345), модель буде відповідати майже однаково щоразу. [Experimental("OPENAI001")]
 				//AllowParallelToolCalls = true //Function Calling (виклик функцій). Модель може сказати: "Виклич функцію GetAnalysisDate()".
 				//  Tools = {  } Це наступний рівень після RAG. Якщо ти захочеш, щоб бот не просто писав текст, а, наприклад, сам записував пацієнта до лікаря або рахував ШКФ за формулою, ти описуєш ці функції в Tools. Модель не виконує код, вона просто каже: "Я хочу викликати калькулятор з параметрами А і Б", а твій C# код це виконує.
-				IncludeLogProbabilities = true,
-				TopLogProbabilityCount = 5,
-				/*StopSequences =
-				{
-					"}",
-					" ]"
-				} */
-				//// Стоп-послідовність, якщо модель почне писати пояснення після JSON
 			};
 			var messages = new List<ChatMessage>
 			{
@@ -81,9 +74,9 @@ public class MedicalContextReasoningService
 			ChatCompletion completion = await _chatClient.CompleteChatAsync(messages, options);
 			var responseText = completion.Content[0].Text; //Зазвичай текстова відповідь знаходиться в першому елементі контенту 
 
-			var result = responseText.DeserializeFromJson<MedicalContextReasoningResult>();
+			var result = responseText.DeserializeFromJson<MedicalContextLlmResponse>();
 			_logger.LogInformation("Medical Context Result: {Json}", result);
-			return result ?? new MedicalContextReasoningResult
+			return result ?? new MedicalContextLlmResponse
 			{
 				IsMedical = false,
 				Reason = "Виникла невідома помилка під час генерації відповіді.",
@@ -93,7 +86,7 @@ public class MedicalContextReasoningService
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error extracting context");
-			return new MedicalContextReasoningResult()
+			return new MedicalContextLlmResponse()
 			{
 				IsMedical = false,
 				Reason = $"Виникла помилка під час генерації відповіді: {ex.Message}.",

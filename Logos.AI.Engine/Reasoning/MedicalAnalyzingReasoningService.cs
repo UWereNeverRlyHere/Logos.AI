@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,22 +9,22 @@ using OpenAI.Chat;
 
 namespace Logos.AI.Engine.Reasoning;
 
-public class ClinicalReasoningService
+public class MedicalAnalyzingReasoningService : IMedicalAnalyzingReasoningService
 {
     private readonly ChatClient _chatClient;
-    private readonly ILogger<ClinicalReasoningService> _logger;
+    private readonly ILogger<MedicalAnalyzingReasoningService> _logger;
     private readonly string _systemPrompt;
     private readonly LlmOptions _options;
 
-    public ClinicalReasoningService(
+    public MedicalAnalyzingReasoningService(
         IOptions<OpenAiOptions> options,
         ChatClient chatClient,
         IHostEnvironment env,
-        ILogger<ClinicalReasoningService> logger)
+        ILogger<MedicalAnalyzingReasoningService> logger) 
     {
         _chatClient = chatClient;
         _logger = logger;
-        _options = options.Value.ClinicalReasoning;
+        _options = options.Value.MedicalAnalyzing;
         // Завантажуємо чистий System Prompt
         var promptPath = Path.Combine(env.ContentRootPath, "PromptKnowledgeBase", _options.PromptFile);
         if (!File.Exists(promptPath))
@@ -85,18 +86,18 @@ public class ClinicalReasoningService
             Temperature = _options.Temperature,
             TopP = _options.TopP,
             MaxOutputTokenCount = _options.MaxTokens,
-           // ReasoningEffortLevel = ChatReasoningEffortLevel.High //Experimental option
-           FrequencyPenalty = 0, //Штрафує за часте повторення слів.
-           PresencePenalty = 0,//Штрафує за те, що слово взагалі вже було в тексті. Змушує постійно змінювати тему
+            IncludeLogProbabilities = true,
+            TopLogProbabilityCount = _options.TopLogProbabilityCount,
+            FrequencyPenalty = 0, //Штрафує за часте повторення слів.
+            PresencePenalty = 0,//Штрафує за те, що слово взагалі вже було в тексті. Змушує постійно змінювати тему
+            ResponseFormat = ChatResponseFormat.CreateTextFormat(),
+            // ReasoningEffortLevel = ChatReasoningEffortLevel.High //Experimental option
            //WebSearchOptions //Experimental
-           ResponseFormat = ChatResponseFormat.CreateTextFormat(),
            //Stream Відповідь приходить по словах (як друкарська машинка), а не вся одразу через 10 секунд.
            //StopSequences Стоп-слова, побачивши які модель замовкає.
            //Seed = "Зерно" випадковості. Якщо передати одне й те саме число (наприклад 12345), модель буде відповідати майже однаково щоразу. [Experimental("OPENAI001")]
            //AllowParallelToolCalls = true //Function Calling (виклик функцій). Модель може сказати: "Виклич функцію GetAnalysisDate()".
           //  Tools = {  } Це наступний рівень після RAG. Якщо ти захочеш, щоб бот не просто писав текст, а, наприклад, сам записував пацієнта до лікаря або рахував ШКФ за формулою, ти описуєш ці функції в Tools. Модель не виконує код, вона просто каже: "Я хочу викликати калькулятор з параметрами А і Б", а твій C# код це виконує.
-          IncludeLogProbabilities = true,
-          TopLogProbabilityCount = 10
         };
         try
         {

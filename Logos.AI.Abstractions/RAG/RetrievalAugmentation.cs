@@ -17,7 +17,7 @@ public record RetrievalAugmentationResult
 	/// <summary>
 	/// Отримати всі знайдені чанки "як є" (можуть бути дублікати, якщо різні запити знайшли одне й те саме).
 	/// </summary>
-	public IEnumerable<KnowledgeChunk> GetChunks() =>RetrievalResults.SelectMany(r => r.FoundChunks);
+	public IEnumerable<KnowledgeChunk> GetChunks() => RetrievalResults.SelectMany(r => r.FoundChunks);
 	
 	/// <summary>
 	/// Отримати унікальні чанки (без дублікатів).
@@ -30,7 +30,9 @@ public record RetrievalAugmentationResult
 			.DistinctBy(c => new { c.DocumentId, c.PageNumber }) // Унікальність за документом і сторінкою
 			.OrderByDescending(c => c.Score)                     // Спочатку найбільш релевантні
 			.ToList();
-	}
+	}	
+
+	
 	public RetrievalAugmentationResult(double totalProcessingTimeSeconds, ICollection<RetrievalResult> retrievalResults )
 	{
 		TotalProcessingTimeSeconds = totalProcessingTimeSeconds;
