@@ -1,4 +1,5 @@
 ﻿using Logos.AI.Abstractions.Features.Knowledge.Contracts;
+using Logos.AI.Abstractions.Features.RAG;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
@@ -31,6 +32,7 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<MedicalContextReasoningService>();
 		builder.Services.AddScoped<ClinicalReasoningService>();
 		builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
+		builder.Services.AddScoped<IAugmentationService, AugmentationService>();
 
 		builder.ConfigureOptions();
 

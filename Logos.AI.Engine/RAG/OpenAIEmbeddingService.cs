@@ -21,7 +21,7 @@ public class OpenAIEmbeddingService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
-    public async Task<List<float>> GetEmbeddingAsync(string text, CancellationToken ct = default)
+    public async Task<ICollection<float>> GetEmbeddingAsync(string text, CancellationToken ct = default)
     {
         // VERSION - Community SDK 
         var options = new EmbeddingGenerationOptions
@@ -29,7 +29,7 @@ public class OpenAIEmbeddingService
             Dimensions = _options.Dimensions
         };
         OpenAIEmbedding embedding = await _client.GenerateEmbeddingAsync(text,options, ct);
-        float[] vector = embedding.ToFloats().ToArray();
-        return vector.ToList();
+        var vector = embedding.ToFloats().ToArray();
+        return vector;
     }
 }

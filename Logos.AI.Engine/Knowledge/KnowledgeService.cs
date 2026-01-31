@@ -12,7 +12,7 @@ public class KnowledgeService(PdfChunkService pdfService,
 	ILogger<KnowledgeService> logger) : IKnowledgeService
 {
 	//private readonly SqlChunkService _sqlService; 
-	private readonly ILogger<KnowledgeService> _logger = logger;
+	//private readonly ILogger<KnowledgeService> _logger = logger;
 	public async Task<IngestionResult> IngestFileAsync(IngestionUploadData uploadData, CancellationToken ct = default)
 	{
 		if (!pdfService.TryChunkDocument(uploadData, out var chunkResult, out var error))
