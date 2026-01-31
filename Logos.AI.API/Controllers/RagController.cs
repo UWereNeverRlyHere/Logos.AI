@@ -15,10 +15,9 @@ public class RagController(
 	SqlChunkService    sqlChunkService,
 	QdrantService            qdrantService,
 	RagQueryService          queryService,
-	OpenAiEmbeddingService   embeddingService,
-	PdfChunkService               pdfChunkService,
 	MedicalContextReasoningService  medicalContextReasoningService,
 	ClinicalReasoningService clinicalReasoningService,
+	IKnowledgeService knowledgeService,
 	IConfiguration           config) : Controller
 {
 	// GET: rag/index
@@ -176,52 +175,10 @@ public class RagController(
 				await file.CopyToAsync(fs);
 			}
 
-			// 2. Парсимо PDF (зберігаючи номери сторінок!)
-			// Це CPU-bound операція
-			// 3. Нарізаємо на чанки
-			if (!pdfChunkService.TryChunkDocument(filePath, out var chunkResult, out var error))
-			{
-				ViewBag.Message = error;
-				return await Index();
-			}
-			
-			// 4. Зберігаємо в SQL (Архів + Метадані)
-			// Повертає ID документа, який ми використаємо для зв'язку в Qdrant
-			var documentId = await sqlChunkService.SaveDocumentAsync(file.FileName, filePath, chunkResult);
+			var res =await knowledgeService.IngestFileAsync(new IngestionUploadData(filePath));
 
-			// 5. Векторизація та збереження в Qdrant
-
-			// ВАЖЛИВО: Переконуємось, що колекція існує
-			await qdrantService.EnsureCollectionAsync();
-
-			// Це IO-bound операція (OpenAI API + Qdrant API)
-			for (int i = 0; i < chunkResult.Chunks.Count; i++)
-			{
-				var chunk= chunkResult.Chunks[i];
-
-				// А. Отримуємо вектор
-				var embList = await embeddingService.GetEmbeddingAsync(chunk.Content);
-				var vector = embList.ToArray();
-
-				// Б. Формуємо ID точки (щоб був стабільним)
-				var pointId = $"{documentId}-{i}";
-
-				// В. Формуємо Payload (дані, які повернуться при пошуку)
-				var payload = new Dictionary<string, object>
-				{
-					["documentId"] = documentId.ToString(),
-					["documentTitle"] = chunkResult.DocumentTitle,
-					["fileName"] = file.FileName,
-					["pageNumber"] = chunk.PageNumber,
-					["chunkIndex"] = i,
-					["content"] = chunk.Content, 
-				};
-
-				// Г. Відправляємо в Qdrant
-				await qdrantService.UpsertChunkAsync(pointId, vector, payload);
-			}
-
-			ViewBag.Message = $"Success! Uploaded '{file.FileName}', saved to SQL, and indexed {chunkResult.Chunks.Count} chunks in Qdrant.";
+			if (res.IsSuccess) return Ok(new { message = $"Uploaded {file.FileName}", chunks = res.ChunksCount });
+			return BadRequest(res.Message);
 		}
 		catch (Exception ex)
 		{

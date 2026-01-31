@@ -27,13 +27,13 @@ public class PdfChunkService
 	}
 
 // Змінюємо сигнатуру методу: додаємо out string docTitle
-	public bool TryChunkDocument(string filePath, out SimpleDocumentChunk simpleDocumentChunk, out string error)
+	public bool TryChunkDocument(IngestionUploadData uploadData, out SimpleDocumentChunk simpleDocumentChunk, out string error)
 	{
-		error = string.Empty;
-		simpleDocumentChunk = new SimpleDocumentChunk(Path.GetFileName(filePath));
+		error = string.Empty; 
+		simpleDocumentChunk = new SimpleDocumentChunk(uploadData);
 		try
 		{
-			var rawPages = ExtractTextWithPages(filePath);
+			var rawPages = ExtractTextWithPages(uploadData.FileData);
 			if (rawPages.Count == 0)
 			{
 				error = "Could not extract text from PDF.";
@@ -79,12 +79,12 @@ public class PdfChunkService
 		return string.Empty;
 	}
 
-	private List<SimpleChunk> ExtractTextWithPages(string filePath)
+	private List<SimpleChunk> ExtractTextWithPages(byte[] file)
 	{
 		var result = new List<SimpleChunk>();
 		try
 		{
-			using var document = PdfDocument.Open(filePath);
+			using var document = PdfDocument.Open(file);
 			foreach (var page in document.GetPages())
 			{
 				var text = ContentOrderTextExtractor.GetText(page);

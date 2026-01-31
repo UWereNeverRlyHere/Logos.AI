@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 namespace Logos.AI.Abstractions.Features.Knowledge;
 
 public record SimpleDocumentChunk
@@ -8,6 +9,9 @@ public record SimpleDocumentChunk
 	/// </summary>
 	[Description("Ім'я файлу")]
 	public string FileName { get; init; } = string.Empty;
+	[Description("Можливий опис документа")]
+	[MaxLength(500)]
+	public string Description { get; init; } = string.Empty;
 	/// <summary>
 	/// Назва документа (заголовок).
 	/// </summary>
@@ -19,6 +23,12 @@ public record SimpleDocumentChunk
 	public SimpleDocumentChunk()
 	{
 	}
+	public SimpleDocumentChunk(IngestionUploadData data)
+	{
+		FileName = data.FileName;
+		DocumentTitle = data.Title;
+		Description = data.Description;
+	}
 	public SimpleDocumentChunk(string fileName)
 	{
 		FileName = fileName;
@@ -26,6 +36,7 @@ public record SimpleDocumentChunk
 	}
 	public void SetTitleIfNotEmpty(string title)
 	{
+		if (!string.IsNullOrWhiteSpace(DocumentTitle)) return;
 		if (!string.IsNullOrWhiteSpace(title)) DocumentTitle = title;
 	}
 	public void AddChunks(List<SimpleChunk> chunks)
