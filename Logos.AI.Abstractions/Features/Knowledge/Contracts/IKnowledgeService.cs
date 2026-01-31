@@ -1,4 +1,4 @@
-﻿namespace Logos.AI.Abstractions.Features.Knowledge;
+﻿namespace Logos.AI.Abstractions.Features.Knowledge.Contracts;
 
 public interface IKnowledgeService
 {

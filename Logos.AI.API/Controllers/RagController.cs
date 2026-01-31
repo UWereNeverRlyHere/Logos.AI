@@ -1,9 +1,11 @@
 ﻿using System.Text;
 using System.Text.Json;
 using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Abstractions.Features.Knowledge.Contracts;
 using Logos.AI.Abstractions.Features.PatientAnalysis;
 using Logos.AI.Abstractions.Features.RAG;
 using Logos.AI.Engine.Knowledge;
+using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
 using Logos.AI.Engine.Reasoning;
 using Microsoft.AspNetCore.Mvc;

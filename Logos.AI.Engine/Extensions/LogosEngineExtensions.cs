@@ -1,7 +1,8 @@
-﻿﻿using Logos.AI.Abstractions.Features.Knowledge;
- using Logos.AI.Engine.Configuration;
+﻿using Logos.AI.Abstractions.Features.Knowledge.Contracts;
+using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
+using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
 using Logos.AI.Engine.Reasoning;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
-
-namespace Logos.AI.Engine;
+using Qdrant.Client;
+namespace Logos.AI.Engine.Extensions;
 
 public static class LogosEngineExtensions
 {
@@ -20,7 +21,7 @@ public static class LogosEngineExtensions
 		var connectionString = builder.Configuration.GetConnectionString("LogosDatabase");
 		builder.Services.AddDbContext<LogosDbContext>(options => options.UseSqlite(connectionString));
 
-		builder.Services.AddHttpClient<OpenAiEmbeddingService>();
+		builder.Services.AddHttpClient<OpenAIEmbeddingService>();
 		builder.Services.AddSingleton<QdrantService>();
 		builder.Services.AddSingleton<RagQueryService>();
 
@@ -33,13 +34,17 @@ public static class LogosEngineExtensions
 
 		builder.ConfigureOptions();
 
-		// Реєстрація ChatClient
 		builder.Services.AddSingleton<ChatClient>(sp =>
 		{
 			var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
-			// Якщо ключ пустий, це викличе помилку при запиті, але дозволить запустити додаток
 			return new ChatClient(options.Model, options.ApiKey);
 		});
+		builder.Services.AddSingleton<QdrantClient>(sp =>
+		{
+			var options = sp.GetRequiredService<IOptions<RagOptions>>().Value;
+			return new QdrantClient(options.Qdrant.Host, options.Qdrant.Port);
+		});
+		
 	}
 
 	private static void ConfigureOptions(this IHostApplicationBuilder builder)

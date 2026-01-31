@@ -1,11 +1,13 @@
 ﻿using System.Collections.Concurrent;
 using Logos.AI.Abstractions.Features.Knowledge;
+using Logos.AI.Abstractions.Features.Knowledge.Contracts;
+using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
 using Microsoft.Extensions.Logging;
 namespace Logos.AI.Engine.Knowledge;
 
 public class KnowledgeService(PdfChunkService pdfService,
-	OpenAiEmbeddingService embeddingService,
+	OpenAIEmbeddingService embeddingService,
 	QdrantService qdrantService,
 	ILogger<KnowledgeService> logger) : IKnowledgeService
 {
@@ -26,16 +28,15 @@ public class KnowledgeService(PdfChunkService pdfService,
 			var vectorEnum = await embeddingService.GetEmbeddingAsync(chunk.Content, ct);
 			var vector = vectorEnum.ToArray();
 			var pointId = $"{docId}-{count}";
-			var payload = new Dictionary<string, object>
-			{
-				["documentId"] = docId.ToString(),
-				["fileName"] = uploadData.FileName,
-				["documentTitle"] = chunkResult.DocumentTitle, 
-				["documentDescription"] = uploadData.Description, // Можливо додам генерацію опису з ШІ
-				["pageNumber"] = chunk.PageNumber,
-				["fullText"] = chunk.Content,
-				["indexedAt"] = DateTime.UtcNow.ToString("O") 
-			};
+			var payload = KnowledgeDictionary.Create()
+				.SetDocumentId(docId)
+				.SetFileName(uploadData.FileName)
+				.SetDocumentTitle(chunkResult.DocumentTitle)
+				.SetDocumentDescription(uploadData.Description)
+				.SetPageNumber(chunk.PageNumber)
+				.SetFullText(chunk.Content)
+				.SetIndexedAtNow()
+				.GetPayload();
 
 			await qdrantService.UpsertChunkAsync(pointId, vector, payload, ct);
 			count++;

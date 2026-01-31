@@ -1,6 +1,7 @@
 ﻿using Logos.AI.Abstractions.Features.Knowledge;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Knowledge;
+using Logos.AI.Engine.Knowledge.Qdrant;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -8,7 +9,7 @@ namespace Logos.AI.Engine.RAG;
 //Retrieval - поиск и извлечение релевантной информации.
 public class RagQueryService(
 	IOptions<RagOptions> options,
-	OpenAiEmbeddingService   embedding, 
+	OpenAIEmbeddingService   embedding, 
 	QdrantService            qdrant, 
 	ILogger<RagQueryService> logger)
 {

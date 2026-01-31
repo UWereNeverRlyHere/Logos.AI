@@ -9,10 +9,10 @@ public record ConfidenceResult(double Score, string Status, string Details);
 
 public class ConfidenceValidator : IConfidenceValidator
 {
-    private readonly OpenAiEmbeddingService _embeddingService;
+    private readonly OpenAIEmbeddingService _embeddingService;
     private readonly ILogger<ConfidenceValidator> _logger;
 
-    public ConfidenceValidator(OpenAiEmbeddingService embeddingService, ILogger<ConfidenceValidator> logger)
+    public ConfidenceValidator(OpenAIEmbeddingService embeddingService, ILogger<ConfidenceValidator> logger)
     {
         _embeddingService = embeddingService;
         _logger = logger;

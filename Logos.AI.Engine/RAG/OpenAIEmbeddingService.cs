@@ -3,13 +3,14 @@ using Microsoft.Extensions.Options;
 using OpenAI.Embeddings;
 namespace Logos.AI.Engine.RAG;
 
-public class OpenAiEmbeddingService
+// ReSharper disable once InconsistentNaming
+public class OpenAIEmbeddingService
 {
     private readonly HttpClient _httpClient;
     private readonly EmbeddingClient _client;
     private readonly EmbeddingOptions _options;
 
-    public OpenAiEmbeddingService(IOptions<OpenAiOptions> options, HttpClient httpClient)
+    public OpenAIEmbeddingService(IOptions<OpenAiOptions> options, HttpClient httpClient)
     {
         var apiKey = options.Value.ApiKey;
         if (string.IsNullOrEmpty(apiKey))

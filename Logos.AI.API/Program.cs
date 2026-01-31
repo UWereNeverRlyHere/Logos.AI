@@ -1,4 +1,5 @@
 using Logos.AI.Engine;
+using Logos.AI.Engine.Extensions;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
