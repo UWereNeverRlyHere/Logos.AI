@@ -32,7 +32,7 @@ public class OpenAIEmbeddingService(EmbeddingClient client, IOptions<OpenAiOptio
         var usage = result.Value.Usage;
         logger.LogInformation(
             "Embedding usage: Input tokens: {Input}, Total tokens: {Total}",
-            usage.TotalTokenCount,
+            usage.InputTokenCount,
             usage.TotalTokenCount
         );
 

@@ -1,7 +1,9 @@
-﻿using System.Text;
-using Logos.AI.Abstractions.Knowledge;
+﻿using System.Text.Json;
+using Logos.AI.Abstractions.Common;
+using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Engine.Configuration;
+using Logos.AI.Engine.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -25,90 +27,90 @@ public class MedicalAnalyzingReasoningService : IMedicalAnalyzingReasoningServic
         _chatClient = chatClient;
         _logger = logger;
         _options = options.Value.MedicalAnalyzing;
-        // Завантажуємо чистий System Prompt
+
         var promptPath = Path.Combine(env.ContentRootPath, "PromptKnowledgeBase", _options.PromptFile);
+        
         if (!File.Exists(promptPath))
         {
             throw new FileNotFoundException($"Critical error: Prompt file not found at {promptPath}");
         }
         _systemPrompt = File.ReadAllText(promptPath);
     }
-    /*public async Task<List<string>> AnalyzeMultipleAsync(string message, List<KnowledgeChunk> protocols, int n = 3)
-    {
-        // ... формування contextBuilder та messages як раніше ...
 
-        var options = new ChatCompletionOptions
-        {
-            Temperature = 0.7f, // Підвищуємо температуру для різноманітності варіантів
-            MaxOutputTokenCount = _options.MaxTokens
-        };
-
-        // Викликаємо модель n разів (або через параметр n, якщо бібліотека підтримує)
-        var tasks = Enumerable.Range(0, n).Select(_ => _chatClient.CompleteChatAsync(message, options));
-        var results = await Task.WhenAll(tasks);
-    
-        return results.Select(r => r.Content[0].Text).ToList();
-    }*/
-    public async Task<string> AnalyzeAsync(string patientJson, List<KnowledgeChunk> protocols, CancellationToken ct = default)
+    public async Task<ReasoningResult<MedicalAnalyzingLLmResponse>> AnalyzeAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
     {
-        // 1. Формуємо читабельний контекст із знайдених шматків (RAG Context)
-        var contextBuilder = new StringBuilder();
-        if (protocols.Count > 0)
-        {
-            foreach (var doc in protocols)
-            {
-                contextBuilder.AppendLine($"--- ДЖЕРЕЛО: {doc.FileName} (стор. {doc.PageNumber}) ---");
-                contextBuilder.AppendLine(doc.Content);
-                contextBuilder.AppendLine(); 
-            }
-        }
-        else
-        {
-            contextBuilder.AppendLine("Релевантних медичних протоколів у базі знань не знайдено.");
-        }
-        // 2. Формуємо повідомлення користувача (User Message)
-        // Саме тут ми підставляємо змінні, як ти й хотів.
-        var userMessageContent = $"""
-            ДАНІ ПАЦІЄНТА (JSON):
-            {patientJson}
-            БАЗА ЗНАНЬ (Знайдені фрагменти):
-            {contextBuilder}
-            """;
-        // 3. Збираємо діалог
+        // 1. Серіалізуємо весь запит (Пацієнт + RAG Augmentations)
+        var userMessageContent = request.SerializeToJson();
         var messages = new List<ChatMessage>
         {
-            new SystemChatMessage(_systemPrompt), // Інструкція (Закон)
-            new UserChatMessage(userMessageContent) // Дані (Контекст)
+            new SystemChatMessage(_systemPrompt),
+            new UserChatMessage(userMessageContent) 
         };
-        // 4. Налаштування 
+
         var options = new ChatCompletionOptions
         {
             Temperature = _options.Temperature,
             TopP = _options.TopP,
             MaxOutputTokenCount = _options.MaxTokens,
             IncludeLogProbabilities = true,
-            TopLogProbabilityCount = _options.TopLogProbabilityCount,
-            FrequencyPenalty = 0, //Штрафує за часте повторення слів.
-            PresencePenalty = 0,//Штрафує за те, що слово взагалі вже було в тексті. Змушує постійно змінювати тему
-            ResponseFormat = ChatResponseFormat.CreateTextFormat(),
+            TopLogProbabilityCount = _options.TopLogProbabilityCount, 
+            ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+                jsonSchemaFormatName: "medical_analysis",
+                jsonSchema: LogosJsonExtensions.GetSchemaFromType<MedicalAnalyzingLLmResponse>(false),
+                jsonSchemaFormatDescription: "Detailed clinical analysis and recommendations",
+                jsonSchemaIsStrict: true 
+            ),
+
+            // Параметри "на майбутнє":
+            // FrequencyPenalty = 0, //Штрафує за часте повторення слів.
+            // PresencePenalty = 0,//Штрафує за те, що слово взагалі вже було в тексті.
             // ReasoningEffortLevel = ChatReasoningEffortLevel.High //Experimental option
-           //WebSearchOptions //Experimental
-           //Stream Відповідь приходить по словах (як друкарська машинка), а не вся одразу через 10 секунд.
-           //StopSequences Стоп-слова, побачивши які модель замовкає.
-           //Seed = "Зерно" випадковості. Якщо передати одне й те саме число (наприклад 12345), модель буде відповідати майже однаково щоразу. [Experimental("OPENAI001")]
-           //AllowParallelToolCalls = true //Function Calling (виклик функцій). Модель може сказати: "Виклич функцію GetAnalysisDate()".
-          //  Tools = {  } Це наступний рівень після RAG. Якщо ти захочеш, щоб бот не просто писав текст, а, наприклад, сам записував пацієнта до лікаря або рахував ШКФ за формулою, ти описуєш ці функції в Tools. Модель не виконує код, вона просто каже: "Я хочу викликати калькулятор з параметрами А і Б", а твій C# код це виконує.
+            // WebSearchOptions //Experimental
+            // Stream Відповідь приходить по словах.
+            // StopSequences Стоп-слова.
+            // Seed = "Зерно" випадковості. [Experimental("OPENAI001")]
+            // AllowParallelToolCalls = true
+            // Tools = { } всякі задачі типу "запиши до лікаря" 
         };
+
         try
         {
-            _logger.LogInformation("Sending request to LLM for Clinical Reasoning...");
-            ChatCompletion completion = await _chatClient.CompleteChatAsync(messages, options,ct);
-            return completion.Content[0].Text;
+            _logger.LogInformation("Sending request to LLM for Clinical Reasoning (Structured Output)...");
+            
+            ChatCompletion completion = await _chatClient.CompleteChatAsync(messages, options, ct);
+            
+            var content = completion.Content[0].Text;
+            var usage = completion.Usage;
+            
+            var data = JsonSerializer.Deserialize<MedicalAnalyzingLLmResponse>(content) 
+                ?? throw new InvalidOperationException("Failed to deserialize LLM response.");
+
+            // Мапимо LogProbs
+            var logProbs = new List<LogProbToken>();
+            if (completion.ContentTokenLogProbabilities != null)
+            {
+                logProbs = completion.ContentTokenLogProbabilities
+                    .Select(t => new LogProbToken
+                    {
+                        Token = t.Token,
+                        LogProb = t.LogProbability,
+                        LinearProbability = Math.Exp(t.LogProbability)
+                    })
+                    .ToList();
+            }
+            _logger.LogInformation("Clinical Reasoning (Structured Output) completed successfully");
+            return new ReasoningResult<MedicalAnalyzingLLmResponse>
+            {
+                Data = data,
+                TokenUsage = new TokenUsageInfo(usage.InputTokenCount, usage.OutputTokenCount),
+                LogProbs = logProbs,
+                RawContent = content
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during Clinical Reasoning generation");
-            return "Вибачте, сталася помилка при генерації клінічного висновку.";
+            throw; 
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
+using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 namespace Logos.AI.Engine.Extensions;
 
@@ -11,9 +12,11 @@ public static class LogosJsonExtensions
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
-
+    public static string SerializeToJson<T>(this T obj) => JsonSerializer.Serialize(obj, JsonOptions);
+    
     public static T? DeserializeFromJson<T>(this string json)
     {
         if (string.IsNullOrWhiteSpace(json)) return default;

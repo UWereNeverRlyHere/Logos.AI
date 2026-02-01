@@ -27,7 +27,7 @@ public record MedicalContextLlmResponse
 /// <summary>
 /// Кореневий об'єкт відповіді від AI про стан пацієнта.
 /// </summary>
-public record ClinicalAnalysisLLmResponse
+public record MedicalAnalyzingLLmResponse
 {
     [Description("Загальний висновок та статус пацієнта")]
     public required ClinicalSummary Summary { get; init; }
