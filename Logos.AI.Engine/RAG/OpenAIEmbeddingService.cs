@@ -10,19 +10,6 @@ namespace Logos.AI.Engine.RAG;
 public class OpenAIEmbeddingService(EmbeddingClient client, IOptions<OpenAiOptions> options, ILogger<OpenAIEmbeddingService> logger)
 {
     private readonly EmbeddingOptions _options = options.Value.Embedding;
-
-    /*public async Task<ICollection<float>> GetEmbeddingAsync(string text, CancellationToken ct = default)
-    {
-        // VERSION - Community SDK 
-        var options = new EmbeddingGenerationOptions
-        {
-            Dimensions = _options.Dimensions
-        };
-        OpenAIEmbedding embedding = await _client.GenerateEmbeddingAsync(text,options, ct);
-        //Usage?
-        var vector = embedding.ToFloats().ToArray();
-        return vector;
-    }*/
     public async Task<EmbeddingResult> GetEmbeddingAsync(string text, CancellationToken ct = default)
     {
         var opt = new EmbeddingGenerationOptions

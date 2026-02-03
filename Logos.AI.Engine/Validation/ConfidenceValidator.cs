@@ -1,75 +1,89 @@
-﻿using Logos.AI.Abstractions.Validation;
-using Logos.AI.Engine.RAG;
+﻿using Logos.AI.Abstractions.Reasoning;
+using Logos.AI.Abstractions.Validation;
+using Logos.AI.Abstractions.Validation.Contracts;
 using Microsoft.Extensions.Logging;
+
 namespace Logos.AI.Engine.Validation;
-/// <summary>
-/// Оцінка впевненості (LogProbs)
-/// </summary>
-public record ConfidenceResult(double Score, string Status, string Details);
 
-public class ConfidenceValidator : IConfidenceValidator
+public class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : IConfidenceValidator
 {
-    private readonly OpenAIEmbeddingService _embeddingService;
-    private readonly ILogger<ConfidenceValidator> _logger;
+    // Вага "слабкої ланки". 
+    // Якщо встановити 1.0 - оцінка буде дорівнювати найменш впевненому токену.
+    // Якщо 0.0 - оцінка буде просто середнім арифметичним.
+    // 0.4 - збалансований підхід.
+    private const double WeakestLinkWeight = 0.4; 
 
-    public ConfidenceValidator(OpenAIEmbeddingService embeddingService, ILogger<ConfidenceValidator> logger)
+    public Task<ConfidenceValidationResult> ValidateAsync(IReasoningResult reasoningResult)
     {
-        _embeddingService = embeddingService;
-        _logger = logger;
-    }
+        var details = new List<string>();
 
-    public async Task<ConfidenceResult> ValidateConsistencyAsync(List<string> hypotheses, CancellationToken ct = default)
-    {
-        if (hypotheses.Count < 2) 
-            return new ConfidenceResult(1.0, "Н/Д", "Недостатньо даних для порівняння");
-
-        // 1. Отримуємо ембеддінги для всіх варіантів відповідей
-        var embeddings = new List<float[]>();
-        foreach (var text in hypotheses)
+        // 1. Якщо LogProbs немає (модель не повернула або це старий формат)
+        if (reasoningResult.LogProbs == null || reasoningResult.LogProbs.Count == 0)
         {
-            var vector = await _embeddingService.GetEmbeddingAsync(text, ct);
-            embeddings.Add(vector.ToArray());
-        }
-
-        // 2. Рахуємо середню косинусну подібність між усіма парами (Self-Consistency Score)
-        double totalSimilarity = 0;
-        int pairs = 0;
-
-        for (int i = 0; i < embeddings.Count; i++)
-        {
-            for (int j = i + 1; j < embeddings.Count; j++)
+            details.Add("No LogProbs provided by LLM. Assuming Medium confidence fallback.");
+            return Task.FromResult(new ConfidenceValidationResult
             {
-                totalSimilarity += CosineSimilarity(embeddings[i], embeddings[j]);
-                pairs++;
-            }
+                Score = 0.7, // Fallback
+                Details = details
+            });
         }
 
-        double confidenceScore = totalSimilarity / pairs;
+        // 2. Математика
+        // 2.1 Середня впевненість (Linear Probability)
+        // LogProb - це логарифм (наприклад -0.1). Linear = exp(-0.1) ≈ 0.9
+        var linearProbs = reasoningResult.LogProbs
+            .Where(p => p.LinearProbability.HasValue)
+            .Select(p => p.LinearProbability!.Value)
+            .ToList();
 
-        // 3. Інтерпретація результату
-        string status = confidenceScore switch
+        if (linearProbs.Count == 0) // Якщо раптом щось пішло не так з конвертацією
         {
-            > 0.92 => "Висока",
-            > 0.85 => "Середня",
-            _ => "Низька (Суперечливі результати)"
-        };
-
-        return new ConfidenceResult(
-            confidenceScore, 
-            status, 
-            $"Середня схожість відповідей: {confidenceScore:F4}. Кількість ітерацій: {hypotheses.Count}"
-        );
-    }
-
-    private double CosineSimilarity(float[] V1, float[] V2)
-    {
-        double dot = 0.0d, mag1 = 0.0d, mag2 = 0.0d;
-        for (int n = 0; n < V1.Length; n++)
-        {
-            dot += V1[n] * V2[n];
-            mag1 += Math.Pow(V1[n], 2);
-            mag2 += Math.Pow(V2[n], 2);
+             return Task.FromResult(new ConfidenceValidationResult { Score = 0.5 });
         }
-        return dot / (Math.Sqrt(mag1) * Math.Sqrt(mag2));
+
+        double avgConfidence = linearProbs.Average();
+        details.Add($"Average Token Confidence: {avgConfidence:P1}");
+
+        // 2.2 Min Probability (Найслабша ланка)
+        // Ми беремо не 1 найгірший токен (це може бути просто кома), а 5-й перцентиль найгірших, 
+        // або просто мінімум, якщо текст короткий.
+        double minConfidence = linearProbs.Min();
+        
+        // Знаходимо саме слово, в якому модель сумнівалася (для логів)
+        var weakestToken = reasoningResult.LogProbs.MinBy(p => p.LinearProbability)?.Token;
+        details.Add($"Weakest Link (Min Confidence): {minConfidence:P1} (Token: '{weakestToken}')");
+
+        // 2.3 Перплексія (Perplexity) - міра "здивування"
+        // PPL = exp( - sum(log_probs) / N )
+        // Чим менше, тим краще. > 20 - погано. < 5 - супер.
+        double sumLogProbs = reasoningResult.LogProbs.Sum(p => p.LogProb);
+        double perplexity = Math.Exp(-sumLogProbs / reasoningResult.LogProbs.Count);
+        
+        // Нормалізуємо перплексію у Score (0..1), де 1 - ідеально.
+        // Це емпірична формула: Score = 1 / (1 + 0.1 * (PPL - 1))
+        // Якщо PPL=1 (ідеал), Score=1. Якщо PPL=11, Score=0.5. Якщо PPL=100, Score=0.09.
+        double perplexityScore = 1.0 / (1.0 + 0.1 * Math.Max(0, perplexity - 1));
+        details.Add($"Perplexity: {perplexity:F2} (Score contribution: {perplexityScore:P1})");
+
+
+        // 3. Фінальна формула Score (Weighted Ensemble)
+        // Ми комбінуємо Average (загальне розуміння) та Min (безпека).
+        // Score = (Avg * 0.6) + (Min * 0.4)
+        // Це "карає" модель, якщо хоча б частина відповіді є галюцинацією.
+        
+        double finalScore = (avgConfidence * (1 - WeakestLinkWeight)) + (minConfidence * WeakestLinkWeight);
+        
+        // Додатковий штраф за високу перплексію (якщо модель пише "брєд")
+        if (perplexity > 10.0)
+        {
+            finalScore *= 0.8; // Штраф 20%
+            details.Add("Penalty applied due to high perplexity (unstable text generation).");
+        }
+
+        return Task.FromResult(new ConfidenceValidationResult
+        {
+            Score = finalScore,
+            Details = details
+        });
     }
 }

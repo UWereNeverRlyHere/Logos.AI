@@ -11,7 +11,6 @@ public interface IReasoningResult
 	// Розрахункова властивість (зручно мати одразу)
 	double AverageConfidence { get; }
 }
-
 public record ReasoningResult<T> : IReasoningResult
 {
 	// "чистий" бізнес-результат (наприклад, MedicalContextReasoningResult)
