@@ -1,5 +1,5 @@
 ﻿using Logos.AI.Abstractions.PatientAnalysis;
-namespace Logos.AI.Abstractions.Reasoning;
+namespace Logos.AI.Abstractions.Reasoning.Contracts;
 
 // Базовий інтерфейс для всіх Reasoning сервісів
 public interface IReasoningService<in TRequest, TResponse>
@@ -10,8 +10,7 @@ public interface IReasoningService<in TRequest, TResponse>
 }
 
 // Конкретний інтерфейс для Medical Context
-public interface IMedicalContextReasoningService
-	: IReasoningService<PatientAnalyzeLlmRequest, MedicalContextLlmResponse>
+public interface IMedicalContextReasoningService : IReasoningService<PatientAnalyzeLlmRequest, MedicalContextLlmResponse>
 {
 }
 

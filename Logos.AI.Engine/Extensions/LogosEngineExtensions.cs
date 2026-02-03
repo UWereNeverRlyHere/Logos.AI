@@ -1,5 +1,7 @@
 ﻿using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.RAG;
+using Logos.AI.Abstractions.Reasoning;
+using Logos.AI.Abstractions.Reasoning.Contracts;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
@@ -28,9 +30,10 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<OpenAIEmbeddingService>();
 		builder.Services.AddScoped<SqlChunkService>();
 		builder.Services.AddScoped<PdfChunkService>();
-
-		builder.Services.AddScoped<MedicalContextReasoningService>();
-		builder.Services.AddScoped<MedicalAnalyzingReasoningService>();
+		
+		builder.Services.AddScoped<LlmClientWrapper>();
+		builder.Services.AddScoped<IMedicalContextReasoningService,MedicalContextReasoningService>();
+		builder.Services.AddScoped<IMedicalAnalyzingReasoningService,MedicalAnalyzingReasoningService>();
 		builder.Services.AddScoped<IIngestionService, IngestionService>();
 		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
 

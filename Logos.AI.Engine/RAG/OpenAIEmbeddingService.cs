@@ -1,4 +1,5 @@
 ﻿using Logos.AI.Abstractions.RAG;
+using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
