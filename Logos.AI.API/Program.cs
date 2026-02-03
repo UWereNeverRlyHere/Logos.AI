@@ -1,4 +1,4 @@
-using Logos.AI.Engine;
+using Logos.AI.API.Middleware;
 using Logos.AI.Engine.Extensions;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +20,7 @@ if (app.Environment.IsDevelopment())
 	app.UseHsts();
 	app.MapOpenApi();
 }
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseHttpsRedirection();

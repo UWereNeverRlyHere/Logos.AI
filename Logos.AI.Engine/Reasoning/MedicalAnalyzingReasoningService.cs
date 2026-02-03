@@ -24,7 +24,7 @@ public class MedicalAnalyzingReasoningService(
 			var reqData = new LlmRequestDto
 			{
 				LlmOptions = _options,
-				UserMessageContent = request,
+				UserMessageJsonContent = request,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_analysis",
 					jsonSchema: LogosJsonExtensions.GetSchemaFromType<MedicalAnalyzingLLmResponse>(false),

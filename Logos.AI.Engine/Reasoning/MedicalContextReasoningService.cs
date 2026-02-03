@@ -1,4 +1,5 @@
-﻿using Logos.AI.Abstractions.Knowledge;
+﻿using Logos.AI.Abstractions.Exceptions;
+using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
@@ -18,17 +19,16 @@ public class MedicalContextReasoningService(
 {
 	private readonly LlmOptions _contextOptions = options.Value.MedicalContext;
 	private readonly LlmOptions _relevanceOptions = options.Value.MedicalRelevance;
-	
-	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
+
+	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string jsonRequest, CancellationToken ct = default)
 	{
 		try
 		{
 			logger.LogInformation("Sending request to LLM for Medical Context Analysis...");
-
 			var reqData = new LlmRequestDto
 			{
 				LlmOptions = _contextOptions,
-				UserMessageContent = request, 
+				Content = jsonRequest,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_context_analysis",
 					jsonSchema: LogosJsonExtensions.GetSchemaFromType<MedicalContextLlmResponse>(false),
@@ -36,60 +36,62 @@ public class MedicalContextReasoningService(
 					jsonSchemaIsStrict: true
 				)
 			};
-
 			return await llmClientWrapper.GenerateAsync<MedicalContextLlmResponse>(reqData, ct);
 		}
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Error during Medical Context Analysis");
-			throw; // Викидаємо помилку далі, щоб контролер або тесты її побачили
+			throw new ReasoningException("Failed to analyze medical context due to an AI service error.", ex);		}
+	}
+	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
+	{
+		return await AnalyzeAsync(request.SerializeToJson(), ct);
+	}
+
+	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(string originalQuery, KnowledgeChunk chunk, CancellationToken ct = default)
+	{
+		try
+		{
+			// Формуємо легкий payload, щоб не ганяти весь JSON пацієнта
+			var evaluationPayload = new
+			{
+				UserQuery = originalQuery,
+				RetrievedChunk = new
+				{
+					Source = chunk.FileName,
+					Content = chunk.Content
+				}
+			};
+
+			var reqData = new LlmRequestDto
+			{
+				LlmOptions = _relevanceOptions,
+				Content = evaluationPayload,
+				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+					"relevance_evaluation",
+					LogosJsonExtensions.GetSchemaFromType<RelevanceEvaluationResult>(false),
+					jsonSchemaIsStrict: true
+				)
+			};
+
+			return await llmClientWrapper.GenerateAsync<RelevanceEvaluationResult>(reqData, ct);
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Error during Relevance Evaluation");
+			// У випадку помилки повертаємо "безпечний" дефолт, щоб не ламати пошук
+			return new ReasoningResult<RelevanceEvaluationResult>
+			{
+				Data = new RelevanceEvaluationResult
+				{
+					IsRelevant = true,
+					Score = 0.5,
+					RelevanceLevel = "Unchecked",
+					Reasoning = "Error during AI validation"
+				},
+				TokenUsage = new Abstractions.Common.TokenUsageInfo(),
+				LogProbs = []
+			};
 		}
 	}
-	
-	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(string originalQuery, KnowledgeChunk chunk, CancellationToken ct = default)
-    {
-        try
-        {
-            // Формуємо легкий payload, щоб не ганяти весь JSON пацієнта
-            var evaluationPayload = new
-            {
-                UserQuery = originalQuery,
-                RetrievedChunk = new 
-                {
-                    Source = chunk.FileName,
-                    Content = chunk.Content
-                }
-            };
-
-            var reqData = new LlmRequestDto
-            {
-                LlmOptions = _relevanceOptions,
-                UserMessageContent = evaluationPayload,
-                ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                    "relevance_evaluation",
-                    LogosJsonExtensions.GetSchemaFromType<RelevanceEvaluationResult>(false),
-                    jsonSchemaIsStrict: true
-                )
-            };
-
-            return await llmClientWrapper.GenerateAsync<RelevanceEvaluationResult>(reqData, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error during Relevance Evaluation");
-            // У випадку помилки повертаємо "безпечний" дефолт, щоб не ламати пошук
-            return new ReasoningResult<RelevanceEvaluationResult>
-            {
-                Data = new RelevanceEvaluationResult 
-                { 
-                    IsRelevant = true, 
-                    Score = 0.5, 
-                    RelevanceLevel = "Unchecked", 
-                    Reasoning = "Error during AI validation" 
-                },
-                TokenUsage = new Abstractions.Common.TokenUsageInfo(),
-                LogProbs = []
-            };
-        }
-    }
 }

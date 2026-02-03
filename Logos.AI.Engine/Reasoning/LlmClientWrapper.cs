@@ -74,7 +74,7 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 		var messages = new List<ChatMessage>
 		{
 			new SystemChatMessage(File.ReadAllText(promptPath)),
-			new UserChatMessage(requestDto.UserMessageContent.SerializeToJson())
+			new UserChatMessage(requestDto.UserMessageJsonContent.SerializeToJson())
 		};
 		return messages;
 	}
