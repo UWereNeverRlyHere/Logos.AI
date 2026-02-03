@@ -2,12 +2,14 @@
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Abstractions.Reasoning.Contracts;
+using Logos.AI.Abstractions.Validation.Contracts;
 using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Data;
 using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
 using Logos.AI.Engine.Reasoning;
+using Logos.AI.Engine.Validation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,16 +36,14 @@ public static class LogosEngineExtensions
 		builder.Services.AddScoped<LlmClientWrapper>();
 		builder.Services.AddScoped<IMedicalContextReasoningService,MedicalContextReasoningService>();
 		builder.Services.AddScoped<IMedicalAnalyzingReasoningService,MedicalAnalyzingReasoningService>();
-		builder.Services.AddScoped<IIngestionService, IngestionService>();
 		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
+		builder.Services.AddScoped<IIngestionService, IngestionService>();
+		builder.Services.AddScoped<IConfidenceValidator, ConfidenceValidator>();
 
 		builder.ConfigureOptions();
 
-		builder.Services.AddSingleton<ChatClient>(sp =>
-		{
-			var options = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
-			return new ChatClient(options.Model, options.ApiKey);
-		});
+		builder.Services.AddSingleton<IChatClientFactory, ChatClientFactory>();
+		
 		builder.Services.AddSingleton<QdrantClient>(sp =>
 		{
 			var options = sp.GetRequiredService<IOptions<RagOptions>>().Value;

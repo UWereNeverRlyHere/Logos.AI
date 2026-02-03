@@ -77,9 +77,23 @@ public record EmbeddingResult
 		Vector = vector;
 		EmbeddingTokensSpent = new TokenUsageInfo(inputTokenCount, totalTokenCount);
 	}
-	public EmbeddingResult()
+ 	public EmbeddingResult()
 	{
 	}
 	public int GetTotalTokenCount() => EmbeddingTokensSpent.TotalTokenCount;
 	public int GetInputTokenCount() => EmbeddingTokensSpent.InputTokenCount;
+}
+public record RelevanceEvaluationResult
+{
+	[Description("Чи є цей фрагмент корисним для відповіді на запит")]
+	public required bool IsRelevant { get; init; }
+
+	[Description("Числова оцінка релевантності від 0.0 до 1.0")]
+	public required double Score { get; init; }
+
+	[Description("Категорія релевантності: High, Medium, Low, Irrelevant")]
+	public required string RelevanceLevel { get; init; }
+
+	[Description("Коротке пояснення, чому виставлено таку оцінку (1 речення)")]
+	public required string Reasoning { get; init; }
 }

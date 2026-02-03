@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
 namespace Logos.AI.Engine.Reasoning;
 
-public class LlmClientWrapper(ChatClient chatClient, IHostEnvironment environment, ILogger<LlmClientWrapper> logger)
+public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnvironment environment, ILogger<LlmClientWrapper> logger)
 {
 	public async Task<ReasoningResult<TResponse>> GenerateAsync<TResponse>(LlmRequestDto requestDto, CancellationToken ct = default)
 	{
@@ -17,8 +17,8 @@ public class LlmClientWrapper(ChatClient chatClient, IHostEnvironment environmen
 
 			var chatMessages = GetChatMessages(requestDto);
 			var options = GetChatCompletionOptions(requestDto);
+			var chatClient = chatClientFactory.GetClient(requestDto.LlmOptions.Model);
 			ChatCompletion completion = await chatClient.CompleteChatAsync(chatMessages, options, ct);
-
 			var content = completion.Content[0].Text;
 			var usage = completion.Usage;
 

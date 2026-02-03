@@ -6,7 +6,9 @@ using Logos.AI.Engine.Knowledge.Qdrant;
 using Logos.AI.Engine.RAG;
 using Microsoft.Extensions.Logging;
 namespace Logos.AI.Engine.Knowledge;
-
+/// <summary>
+/// Сервіс для наповнення "бази знань"
+/// </summary>
 public class IngestionService(
 	PdfChunkService           pdfService,
 	OpenAIEmbeddingService    embeddingService,

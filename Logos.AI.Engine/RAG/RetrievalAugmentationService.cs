@@ -70,4 +70,9 @@ public class RetrievalAugmentationService(
 
         return result;
     }
+
+    public async Task<RetrievalAugmentationResult> RetrieveWithRelevanceEvaluteAsync(ICollection<string> queries, CancellationToken ct = default)
+    {
+        
+    }
 }

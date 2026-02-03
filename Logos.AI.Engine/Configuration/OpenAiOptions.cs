@@ -7,11 +7,13 @@ public record OpenAiOptions
 	public string ApiKey { get; init; } = string.Empty;
 	public LlmOptions MedicalAnalyzing { get; init; } = new();
 	public LlmOptions MedicalContext { get; init; } = new();
+	public LlmOptions MedicalRelevance { get; init; } = new();
 	public EmbeddingOptions Embedding { get; init; } = new();
 }
 
 public record LlmOptions
 {
+	public string Model { get; init; } = "gpt-4o-mini";
 	public string PromptFile { get; init; } = "";
 	public int MaxTokens { get; init; } = 1024;
 	public int TopLogProbabilityCount { get; init; } = 5;
