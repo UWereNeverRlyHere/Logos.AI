@@ -21,49 +21,87 @@ public class RetrievalAugmentationService(
 {
 	public async Task<RetrievalAugmentationResult> AugmentAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
 	{
-		// Глобальний таймер для всієї операції
+		// Глобальний таймер для вимірювання загального часу операції
 		var globalStopwatch = Stopwatch.StartNew();
-		// 1. Аналіз контексту (Medical Context Analysis)
+		logger.LogInformation("Starting retrieval augmentation for patient analysis request");
+		// 1. Аналіз медичного контексту запиту
+		logger.LogDebug("Step 1: Analyzing medical context...");
 		var medicalContext = await reasoningService.AnalyzeAsync(request, ct);
-		if (!medicalContext.Data.IsMedical)  RagException.ThrowForNotMedical(medicalContext);
-		// 2. Валідація впевненості моделі (Confidence Check)
+		if (!medicalContext.Data.IsMedical)
+		{
+			logger.LogWarning("Request identified as non-medical. Aborting augmentation");
+			RagException.ThrowForNotMedical(medicalContext);
+		}
+		logger.LogInformation("Medical context analysis completed. Found {QueryCount} search queries", medicalContext.Data.Queries.Count);
+		// 2. Валідація впевненості моделі в аналізі контексту
+		logger.LogDebug("Step 2: Validating LLM confidence for medical context...");
 		var validationRes = await confidenceValidator.ValidateAsync(medicalContext);
-		if (!validationRes.IsValid) RagException.ThrowForConfidanceValidationFailed(validationRes);
-		// 3. Виконання пошуку (Delegation to Core Retrieval)
-		var retrieveRes= await RetrieveContextAsync(medicalContext.Data.Queries, ct);
+		if (!validationRes.IsValid)
+		{
+			logger.LogWarning("Confidence validation failed (Score: {Score:F2}, Level: {Level}). Aborting augmentation", 
+				validationRes.Score, validationRes.Level);
+			RagException.ThrowForConfidanceValidationFailed(validationRes);
+		}
+		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", 
+			validationRes.Score, validationRes.Level);
+		// 3. Виконання пошуку в базі знань
+		logger.LogDebug("Step 3: Executing core retrieval...");
+		var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
 		globalStopwatch.Stop();
-
-		// 4. Формуємо фінальний результат
-		// Токени та середній Score порахуються автоматично всередині RetrievalAugmentationResult
+		// 4. Формування фінального результату
 		var result = new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes);
 		
 		logger.LogInformation(
-			"Retrieval finished in {Time:F2}s. Total queries processed: {Count}. Unique chunks found: {UniqueCount}",
+			"Retrieval augmentation finished in {Time:F2}s. Total queries: {Count}. Unique chunks: {UniqueCount}",
 			result.TotalProcessingTimeSeconds,
 			result.RetrievalResults.Count,
 			result.GetUniqueChunks().Count);
+			
 		return result;
 	}
 
-	// Перевантаження для JSON-рядка
+	// Перевантаження для обробки JSON-рядка запиту
 	public async Task<RetrievalAugmentationResult> AugmentAsync(string jsonRequest, CancellationToken ct = default)
 	{
+		var globalStopwatch = Stopwatch.StartNew();
+		logger.LogInformation("Starting retrieval augmentation from JSON request");
 		try
 		{
+			// Спроба десеріалізації JSON у об'єкт запиту
 			var request = jsonRequest.DeserializeFromJson<PatientAnalyzeLlmRequest>();
-			if (request == null) throw new ArgumentException("Invalid JSON format");
+			if (request == null)
+			{
+				logger.LogError("Failed to deserialize JSON request: Result is null");
+				throw new ArgumentException("Invalid JSON format or empty content.");
+			}
 
+			logger.LogDebug("JSON successfully deserialized to PatientAnalyzeLlmRequest");
 			return await AugmentAsync(request, ct);
 		}
-		catch (Exception)
+		catch (Exception ex)
 		{
+			logger.LogWarning("Standard JSON augmentation failed or request is in alternative format. Attempting direct reasoning analysis. Error: {Message}", ex.Message);
+			
+			// 1. Аналіз контексту безпосередньо з тексту
 			var medicalContext = await reasoningService.AnalyzeAsync(jsonRequest, ct);
-			if (!medicalContext.Data.IsMedical)  RagException.ThrowForNotMedical(medicalContext);
-
+			if (!medicalContext.Data.IsMedical)
+			{
+				logger.LogWarning("Direct reasoning identified content as non-medical");
+				RagException.ThrowForNotMedical(medicalContext);
+			}
+			// 2. Валідація впевненості
 			var validationRes = await confidenceValidator.ValidateAsync(medicalContext);
-			if (!validationRes.IsValid) RagException.ThrowForConfidanceValidationFailed(validationRes);
-
-			return await RetrieveContextAsync(medicalContext.Data.Queries, ct);
+			if (!validationRes.IsValid)
+			{
+				logger.LogWarning("Confidence validation failed for direct reasoning (Score: {Score:F2})", validationRes.Score);
+				RagException.ThrowForConfidanceValidationFailed(validationRes);
+			}
+			// 3. Пошук контексту
+			var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
+			globalStopwatch.Stop();
+			logger.LogInformation("Direct reasoning augmentation completed in {Time:F2}s", globalStopwatch.Elapsed.TotalSeconds);
+			// Повертаємо повноцінний результат, а не просто колекцію чанків
+			return new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes);
 		}
 	}
 
@@ -72,157 +110,138 @@ public class RetrievalAugmentationService(
     /// </summary>
     public async Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
     {
-        // 1. Спочатку робимо базову розумну аугментацію (отримуємо "сирі" результати пошуку)
-        // Це вже включає в себе MedicalContextReasoningService + Confidence Check контексту
+        // 1. Початкова аугментація: отримання "сирих" результатів пошуку
+        // Включає MedicalContextReasoningService та перевірку впевненості контексту
+        logger.LogInformation("Starting validated augmentation process");
         var rawResult = await AugmentAsync(request, ct);
-
         var validatedRetrievalResults = new ConcurrentBag<RetrievalResult>();
-
-        // Глобальний таймер продовжує рахувати, але ми хочемо заміряти час саме валідації
+        // Вимірювання часу саме для етапу ШІ-валідації
         var validationStopwatch = Stopwatch.StartNew();
-        
-        // 2. Паралельна обробка кожного пошукового запиту (Query)
+        // 2. Паралельна обробка кожного пошукового запиту
         var parallelOptions = new ParallelOptions 
         { 
             MaxDegreeOfParallelism = 5, 
             CancellationToken = ct 
         };
-
+        logger.LogInformation("Starting parallel relevance evaluation for {QueryCount} retrieval results", rawResult.RetrievalResults.Count);
         await Parallel.ForEachAsync(rawResult.RetrievalResults, parallelOptions, async (retrievalResult, token) =>
         {
+            logger.LogDebug("Evaluating relevance for query: '{Query}'", retrievalResult.Query);
+            // Якщо для запиту нічого не знайдено, просто зберігаємо його для історії
+            if (retrievalResult.FoundChunks.Count == 0)
+            {
+                validatedRetrievalResults.Add(retrievalResult);
+                return;
+            }
             var verifiedChunks = new List<KnowledgeChunk>();
             var evaluations = new List<RelevanceEvaluationResult>();
-
-            // 3. Групуємо чанки за DocumentId
-            // Це ключовий момент: ми хочемо, щоб модель бачила всі знайдені шматки одного документа разом.
-            var documentGroups = retrievalResult.FoundChunks.GroupBy(c => c.DocumentId);
-
+            // 3. Групування знайдених фрагментів за ID документа для поблокової оцінки
+            var documentGroups = retrievalResult.FoundChunks.GroupBy(c => c.DocumentId).ToList();
+            logger.LogDebug("Found {DocCount} documents for query '{Query}'", documentGroups.Count, retrievalResult.Query);
             foreach (var docGroup in documentGroups)
             {
                 var docChunks = docGroup.ToList();
                 
-                // 4. Викликаємо Reasoning Service для групи чанків
-                // Передаємо запит користувача (Query) і всі шматки цього документа
-                var relevanceReasoning = await reasoningService.EvaluateRelevanceAsync(retrievalResult, token);
-
-                // 5. Оцінюємо впевненість моделі у своїй оцінці (LogProbs)
-                // Ми перевіряємо, чи не галюцинувала модель, коли ставила оцінку "High"
+                // 4. Оцінка релевантності конкретного документа
+                // Створюємо тимчасовий результат тільки з чанками цього документа
+                var docRetrieval = retrievalResult with { FoundChunks = docChunks };
+                var relevanceReasoning = await reasoningService.EvaluateRelevanceAsync(docRetrieval, token);
+                // 5. Валідація впевненості ШІ
                 var confidence = await confidenceValidator.ValidateAsync(relevanceReasoning);
-                // Дані оцінки від LLM
                 var evalData = relevanceReasoning.Data;
-
                 // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
-                bool passValidation = false;
-
-                // Умова 1: Модель впевнена у своїй відповіді (Confidence > Low/Medium)
-                if (confidence.IsValid)
+                if (!confidence.IsValid)
                 {
-                    // Умова 2: Модель сказала, що документ релевантний (Score >= 0.5 або High/Medium)
-                    // Ми використовуємо Score, бо він точніший
-                    if (evalData.Score >= 0.5)
-                    {
-                        passValidation = true;
-                    }
+                    logger.LogWarning("LLM confidence validation failed for document {DocId}. Query: '{Query}'. Reason: {Details}", 
+                        docGroup.Key, retrievalResult.Query, string.Join(", ", confidence.Details));
+                }
+                else if (evalData.Score < 0.5)
+                {
+                    logger.LogDebug("Document {DocId} rejected for query '{Query}'. Score: {Score:F2}", 
+                        docGroup.Key, retrievalResult.Query, evalData.Score);
                 }
                 else
                 {
-                    logger.LogWarning("LLM confidence validation failed for document check. Query: {Query}. Reason: {Details}", 
-                        retrievalResult.Query, string.Join(", ", confidence.Details));
-                    
-                    // Fallback політика: Якщо модель "невпевнена", чи відкидати документ?
-                    // Для медицини безпечніше відкинути, або помітити як "Uncertain".
-                    // Зараз відкидаємо, але зберігаємо в Evaluations з низьким скором.
-                }
-
-                if (passValidation)
-                {
-                    // 6. Вибираємо тільки ті чанки, ID яких повернула модель
-                    // Модель могла сказати: "Документ супер, але тільки чанк №2 підходить, а чанк №1 - це вода"
-                    var relevantFromDoc = docChunks
-                        .Where(c => evalData.RelevantChunkIds.Contains(c.Id))
-                        .ToList();
-
+                    // 6. Вибір релевантних чанків, підтверджених моделлю
+                    var relevantFromDoc = docChunks.Where(c => evalData.RelevantChunkIds.Contains(c.Id)).ToList();
                     if (relevantFromDoc.Count > 0)
                     {
+                        logger.LogDebug("Selected {ChunkCount} relevant chunks from document {DocId} for query '{Query}'", 
+                            relevantFromDoc.Count, docGroup.Key, retrievalResult.Query);
                         verifiedChunks.AddRange(relevantFromDoc);
                     }
                 }
-
-                // 7. Зберігаємо результат оцінки (для історії та UI)
-                // Нам треба додати сюди інформацію про Confidence самої моделі
-                // Тому трохи розширимо Reasoning, додавши інфу про впевненість
-                var enrichedEvaluation = evalData with 
+                // 7. Збереження результату оцінки з даними про впевненість
+                evaluations.Add(evalData with 
                 { 
                     Reasoning = $"[Confidence: {confidence.Level}] {evalData.Reasoning}",
                     ConfidenceValidationResult = confidence
-                };
-                
-                evaluations.Add(enrichedEvaluation);
+                });
             }
-
-            // Якщо після фільтрації щось залишилось (або якщо ми хочемо повернути пустий список, але з оцінками)
-            // Формуємо новий RetrievalResult
-            if (evaluations.Count > 0) // Повертаємо, навіть якщо чанків 0, щоб показати "Ми перевірили, нічого не підійшло"
-            {
-                // Тут ми використовуємо `with`, припускаючи, що ти додав поле Evaluations в RetrievalResult
-                var newResult = retrievalResult with 
-                { 
-                    FoundChunks = verifiedChunks,
-                    RelevanceEvaluations = evaluations,
-                };
-                validatedRetrievalResults.Add(newResult);
-            }
+            // Формуємо оновлений RetrievalResult
+            validatedRetrievalResults.Add(retrievalResult with 
+            { 
+                FoundChunks = verifiedChunks,
+                RelevanceEvaluations = evaluations,
+            });
+            logger.LogInformation("Completed relevance evaluation for query '{Query}'. Validated chunks: {Count}", 
+                retrievalResult.Query, verifiedChunks.Count);
         });
 
         validationStopwatch.Stop();
         
-        // Додаємо час валідації до загального часу
+        // Розрахунок загального часу виконання з урахуванням валідації
         var totalTime = rawResult.TotalProcessingTimeSeconds + validationStopwatch.Elapsed.TotalSeconds;
+        var finalResult = new RetrievalAugmentationResult(totalTime, rawResult.MedicalContextConfidence, validatedRetrievalResults.ToList());
+        logger.LogInformation("Validated augmentation finished. Total time: {Time:F2}s. Validated chunks: {UniqueCount}", 
+            totalTime, finalResult.GetUniqueChunks().Count);
 
-        return new RetrievalAugmentationResult(totalTime, rawResult.MedicalContextConfidence,validatedRetrievalResults.ToList());
+        return finalResult;
     }
 
 	public async Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
 	{
-		// Потокобезпечна колекція для результатів
+		// Потокобезпечна колекція для збору результатів пошуку
 		var searchResults = new ConcurrentBag<RetrievalResult>();
-		// Налаштування паралелізму (не більше 5 запитів одночасно)
+		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно)
 		var parallelOptions = new ParallelOptions
 		{
 			MaxDegreeOfParallelism = 5,
 			CancellationToken = ct
 		};
 
-		logger.LogInformation("Starting retrieval for {Count} queries...", queries.Count);
+		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
+		// Перевірка наявності колекції у векторній БД
 		await qdrantService.EnsureCollectionAsync(ct);
 		await Parallel.ForEachAsync(queries, parallelOptions, async (query, token) =>
 		{
-			// Таймер для ОДНОГО конкретного запиту
+			// Таймер для вимірювання часу обробки конкретного підзапиту
 			var stepStopwatch = Stopwatch.StartNew();
 			try
 			{
-				logger.LogInformation("Embedding query: '{Query}'", query);
-				// 1. Векторизація
+				logger.LogDebug("Processing query: '{Query}'", query);
+				// 1. Векторизація тексту запиту (Embedding)
+				logger.LogDebug("Generating embedding for query: '{Query}'", query);
 				var embedResult = await embeddingService.GetEmbeddingAsync(query, token);
-				logger.LogInformation("Embedding query '{Query}' completed. Tokens spent: {Tokens}", query, embedResult.EmbeddingTokensSpent.TotalTokenCount);
-				// 2. Пошук у Qdrant
-				logger.LogInformation("Searching Qdrant for query: '{Query}'", query);
-
+				logger.LogInformation("Embedding generated for '{Query}'. Tokens: {Tokens}", 
+					query, embedResult.EmbeddingTokensSpent.TotalTokenCount);
+				// 2. Пошук схожих фрагментів у векторній БД Qdrant
+				logger.LogDebug("Searching Qdrant for query: '{Query}'", query);
 				var chunks = await qdrantService.SearchAsync(embedResult.Vector.ToArray(), token);
-
-				logger.LogInformation("Search for query '{Query}' completed. Found {Count} chunks", query, chunks.Count);
 				stepStopwatch.Stop();
-				// 3. Зберігаємо результат
-				// Час конвертуємо в секунди
+				logger.LogInformation("Search for '{Query}' completed. Chunks found: {Count}. Time: {Time:F2}s", 
+					query, chunks.Count, stepStopwatch.Elapsed.TotalSeconds);
+				// 3. Збереження результатів пошуку для даного запиту
 				var retrievalResult = new RetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
-
 				searchResults.Add(retrievalResult);
 			}
 			catch (Exception ex)
 			{
-				logger.LogError(ex, "Error during retrieval for query '{Query}'", query);
+				logger.LogError(ex, "Error during retrieval for query '{Query}': {Message}", query, ex.Message);
 			}
 		});
+
+		logger.LogInformation("Retrieval cycle completed. Total results collected: {Count}", searchResults.Count);
 		return searchResults.ToList();
 	}
 }
