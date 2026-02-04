@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
@@ -13,21 +14,24 @@ public class IngestionService(
 	PdfChunkService           pdfService,
 	OpenAIEmbeddingService    embeddingService,
 	QdrantService             qdrantService,
+	SqlChunkService           sqlChunkService,
 	ILogger<IngestionService> logger) : IIngestionService
 {
-	//private readonly SqlChunkService _sqlService; 
-	//private readonly ILogger<KnowledgeService> _logger = logger;
 	public async Task<IngestionResult> IngestFileAsync(IngestionUploadData uploadData, CancellationToken ct = default)
 	{
-		if (!pdfService.TryChunkDocument(uploadData, out var chunkResult, out var error))
+		var stopwatch = Stopwatch.StartNew();
+		if (!pdfService.TryChunkDocument(uploadData, out SimpleDocumentChunk chunkResult, out var error))
 		{
-			return await Task.FromResult(IngestionResult.CreateFail($"Parsing failed: {error}"));
+			stopwatch.Stop();
+			return await Task.FromResult(IngestionResult.CreateFail(stopwatch, $"Parsing failed: {error}"));
 		}
-		var docId = Guid.NewGuid();
-		// await _sqlService.SaveDocumentAsync(docId, fileName, ...); 
+		
+		var docId = chunkResult.DocumentId;
+		await sqlChunkService.SaveDocumentAsync(uploadData.FileName, uploadData.FilePath, chunkResult, ct);
+		
 		await qdrantService.EnsureCollectionAsync(ct);
 		int count = 0;
-		var tokensRes = new List<TokenUsageInfo>();
+		var tokensRes = new List<IngestionTokenUsageDetails>();
 		foreach (var chunk in chunkResult.Chunks)
 		{
 			var embeddingResult = await embeddingService.GetEmbeddingAsync(chunk.Content, ct);
@@ -35,22 +39,28 @@ public class IngestionService(
 			var pointId = $"{docId}-{count}";
 			var payload = KnowledgeDictionary.Create()
 				.SetDocumentId(docId)
-				.SetFileName(uploadData.FileName)
+				.SetFileName(chunkResult.FileName)
 				.SetDocumentTitle(chunkResult.DocumentTitle)
-				.SetDocumentDescription(uploadData.Description)
+				.SetDocumentDescription(chunkResult.DocumentDescription)
 				.SetPageNumber(chunk.PageNumber)
 				.SetFullText(chunk.Content)
-				.SetIndexedAtNow()
+				.SetIndexedAt(chunkResult.IndexedAt)
 				.GetPayload();
 
 			await qdrantService.UpsertChunkAsync(pointId, vector.ToArray(), payload, ct);
-			tokensRes.Add(embeddingResult.EmbeddingTokensSpent);
+			tokensRes.Add(new IngestionTokenUsageDetails
+			{
+				Content = chunk.Content,
+				TokenUsageInfo = embeddingResult.EmbeddingTokensSpent
+			});
 			count++;
 		}
-		return IngestionResult.CreateSuccess(uploadData.FileName, chunkResult.Chunks.Count, tokensRes);
+		stopwatch.Stop();
+		return IngestionResult.CreateSuccess(stopwatch,chunkResult, tokensRes);
 	}
-	public async Task<ICollection<IngestionResult>> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
+	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
 	{
+		var stopwatch = Stopwatch.StartNew();
 		var results = new ConcurrentBag<IngestionResult>();
 		var parallelOptions = new ParallelOptions
 		{
@@ -62,6 +72,7 @@ public class IngestionService(
 			var result = await IngestFileAsync(item, token);
 			results.Add(result);
 		});
-		return results.ToList();
+		stopwatch.Stop();
+		return new BulkIngestionResult(stopwatch.Elapsed.TotalSeconds, results.ToList());
 	}
 }

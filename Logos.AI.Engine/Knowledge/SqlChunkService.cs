@@ -32,10 +32,12 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 		// 2. Створення документа
 		var document = new Document
 		{
-			Id = Guid.NewGuid(),
-			FileName = fileName,
+			Id = simpleDocumentChunk.DocumentId,
+			FileName = simpleDocumentChunk.FileName,
+			DocumentTitle = simpleDocumentChunk.DocumentTitle,
+			DocumentDescription = simpleDocumentChunk.DocumentDescription,
 			FilePath = filePath,
-			UploadedAt = DateTime.UtcNow,
+			UploadedAt = simpleDocumentChunk.IndexedAt,
 			IsProcessed = true,
 			FileSizeBytes = File.Exists(filePath) ? new FileInfo(filePath).Length : 0
 		};

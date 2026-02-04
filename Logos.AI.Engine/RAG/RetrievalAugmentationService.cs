@@ -4,10 +4,10 @@ using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
+using Logos.AI.Abstractions.Reasoning.Contracts;
 using Logos.AI.Abstractions.Validation.Contracts;
 using Logos.AI.Engine.Extensions;
 using Logos.AI.Engine.Knowledge.Qdrant;
-using Logos.AI.Engine.Reasoning; 
 using Microsoft.Extensions.Logging;
 
 namespace Logos.AI.Engine.RAG;
@@ -15,7 +15,7 @@ namespace Logos.AI.Engine.RAG;
 public class RetrievalAugmentationService(
 	OpenAIEmbeddingService                embeddingService,
 	QdrantService                         qdrantService,
-	MedicalContextReasoningService        reasoningService,
+	IMedicalContextReasoningService       contextReasoningService,
 	IConfidenceValidator                  confidenceValidator,
 	ILogger<RetrievalAugmentationService> logger) : IRetrievalAugmentationService
 {
@@ -26,7 +26,7 @@ public class RetrievalAugmentationService(
 		logger.LogInformation("Starting retrieval augmentation for patient analysis request");
 		// 1. Аналіз медичного контексту запиту
 		logger.LogDebug("Step 1: Analyzing medical context...");
-		var medicalContext = await reasoningService.AnalyzeAsync(request, ct);
+		var medicalContext = await contextReasoningService.AnalyzeAsync(request, ct);
 		if (!medicalContext.Data.IsMedical)
 		{
 			logger.LogWarning("Request identified as non-medical. Aborting augmentation");
@@ -83,7 +83,7 @@ public class RetrievalAugmentationService(
 			logger.LogWarning("Standard JSON augmentation failed or request is in alternative format. Attempting direct reasoning analysis. Error: {Message}", ex.Message);
 			
 			// 1. Аналіз контексту безпосередньо з тексту
-			var medicalContext = await reasoningService.AnalyzeAsync(jsonRequest, ct);
+			var medicalContext = await contextReasoningService.AnalyzeAsync(jsonRequest, ct);
 			if (!medicalContext.Data.IsMedical)
 			{
 				logger.LogWarning("Direct reasoning identified content as non-medical");
@@ -145,7 +145,7 @@ public class RetrievalAugmentationService(
                 // 4. Оцінка релевантності конкретного документа
                 // Створюємо тимчасовий результат тільки з чанками цього документа
                 var docRetrieval = retrievalResult with { FoundChunks = docChunks };
-                var relevanceReasoning = await reasoningService.EvaluateRelevanceAsync(docRetrieval, token);
+                var relevanceReasoning = await contextReasoningService.EvaluateRelevanceAsync(docRetrieval, token);
                 // 5. Валідація впевненості ШІ
                 var confidence = await confidenceValidator.ValidateAsync(relevanceReasoning);
                 var evalData = relevanceReasoning.Data;

@@ -1,27 +1,28 @@
 ﻿using System.Text;
-using System.Text.Json;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Knowledge;
 using Logos.AI.Engine.Knowledge.Qdrant;
-using Logos.AI.Engine.RAG;
-using Logos.AI.Engine.Reasoning;
 using Microsoft.AspNetCore.Mvc;
-
 namespace Logos.AI.API.Controllers;
 
 [Route("rag")]
 public class RagController(
-	SqlChunkService                sqlChunkService,
-	QdrantService                  qdrantService,
-	IRetrievalAugmentationService  iRetrievalAugmentationService,
-	MedicalContextReasoningService medicalContextReasoningService,
-	MedicalAnalyzingReasoningService       medicalAnalyzingReasoningService,
-	IIngestionService              ingestionService,
-	IConfiguration                 config) : Controller
+	SqlChunkService               sqlChunkService,
+	QdrantService                 qdrantService,
+	IRetrievalAugmentationService retrievalAugmentationService,
+	IIngestionService             ingestionService) : Controller
 {
+	// GET all documents (API)
+	[HttpGet("documents")]
+	public async Task<IActionResult> GetDocuments()
+	{
+		var docs = await sqlChunkService.GetAllDocumentsAsync();
+		return Ok(docs.Select(d => new { d.Id, d.DocumentTitle, d.FileName, d.UploadedAt }));
+	}
+	
 	// GET: rag/index
 	[HttpGet("index")]
 	public async Task<IActionResult> Index()
@@ -33,35 +34,65 @@ public class RagController(
 		// Повертаємо пустий список результатів, щоб View не ламалася
 		return View("Index", new List<KnowledgeChunk>());
 	}
-	[HttpPost("TestVectorSearch")]
+	[HttpPost("testVectorSearch")]
 	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeLlmRequest reqData)
 	{
-		var processedContext = await medicalContextReasoningService.AnalyzeAsync(reqData);
-		var result = new TestVectorSearchResult(processedContext.Queries);
+		var processedContext = await retrievalAugmentationService.AugmentAsync(reqData);
+		return Ok(processedContext);
+	}
+	[HttpPost("TestUpload")]
+	public async Task<IActionResult> TestUpload(List<IFormFile>? files, IFormFile? formFile, [FromForm] string? path)
+	{
+		var uploadDataList = new List<IngestionUploadData>();
+		var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+		if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-		try
+		// 1. Обработка локального пути (файл или папка), если передан
+		if (!string.IsNullOrWhiteSpace(path))
 		{
-			await qdrantService.EnsureCollectionAsync();
-			var searchTasks = result.ExtractedContext
-				.Select(context => iRetrievalAugmentationService.SearchAsync(context))
-				.ToList();
-
-			var results = await Task.WhenAll(searchTasks);
-			foreach (var r in results)
+			if (Directory.Exists(path))
 			{
-				result.AddResults(r);
+				var dirFiles = Directory.GetFiles(path, "*.pdf");
+				foreach (var f in dirFiles)
+				{
+					uploadDataList.Add(new IngestionUploadData(f));
+				}
+			}
+			else if (System.IO.File.Exists(path) && Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+			{
+				uploadDataList.Add(new IngestionUploadData(path));
 			}
 		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw;
-		}
-		result.SortByScore();
-		return Ok(result);
-	}
 
-	[HttpPost("TestClinicalReasoning")]
+		// 2. Обработка загруженных файлов из формы
+		var allFiles = new List<IFormFile>();
+		if (files != null) allFiles.AddRange(files);
+		if (formFile != null) allFiles.Add(formFile);
+
+		foreach (var file in allFiles)
+		{
+			if (!Path.GetExtension(file.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+			var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+			await using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
+			{
+				await file.CopyToAsync(fs);
+			}
+			uploadDataList.Add(new IngestionUploadData(filePath));
+		}
+
+		if (uploadDataList.Count == 0)
+		{
+			return BadRequest(new { error = "No PDF files found to ingest. Provide 'files' in form-data or a valid local 'path'." });
+		}
+		
+		var results = await ingestionService.IngestFilesAsync(uploadDataList);
+		return Ok(results);
+	}
+	/*[HttpPost("TestClinicalReasoning")]
 	public async Task<IActionResult> TestClinicalReasoning([FromBody] PatientAnalyzeLlmRequest reqData)
 	{
 		var processedContext = await medicalContextReasoningService.AnalyzeAsync(reqData);
@@ -70,7 +101,7 @@ public class RagController(
 		{
 			await qdrantService.EnsureCollectionAsync();
 			var searchTasks = result.ExtractedContext
-				.Select(context => iRetrievalAugmentationService.SearchAsync(context))
+				.Select(context => retrievalAugmentationService.SearchAsync(context))
 				.ToList();
 			var results = await Task.WhenAll(searchTasks);
 			foreach (var r in results)
@@ -87,7 +118,7 @@ public class RagController(
 		var answer = await medicalAnalyzingReasoningService.AnalyzeAsync(JsonSerializer.Serialize(reqData), result.Results);
 
 		return Ok(answer);
-	}
+	}*/
 	// POST: rag/search
 	[HttpPost("search")]
 	public async Task<IActionResult> Search(string query)
@@ -96,15 +127,13 @@ public class RagController(
 		{
 			return RedirectToAction("Index");
 		}
-
 		try
 		{
 			// Переконуємось, що колекція існує перед пошуком
 			await qdrantService.EnsureCollectionAsync();
-
 			// 1. Виконуємо пошук через RagQueryService
-			var results = await iRetrievalAugmentationService.SearchAsync(query);
-
+			var searchResults = await retrievalAugmentationService.RetrieveContextAsync(new[] { query });
+			var results = searchResults.SelectMany(r => r.FoundChunks).ToList();
 			// 2. Форматуємо результати для відображення (так як немає LLM генерації)
 			if (results.Count > 0)
 			{
@@ -125,11 +154,9 @@ public class RagController(
 			{
 				ViewBag.Answer = "No relevant information found in the knowledge base.";
 			}
-
 			// 3. Оновлюємо список документів для сайдбару
 			var docs = await sqlChunkService.GetAllDocumentsAsync();
 			ViewBag.AllDocuments = docs;
-
 			return View("Index", results);
 		}
 		catch (Exception ex)
@@ -150,33 +177,70 @@ public class RagController(
 
 	// POST: rag/upload
 	[HttpPost("upload")]
-	public async Task<IActionResult> Upload(IFormFile file)
+	public async Task<IActionResult> Upload(List<IFormFile> files, string uploadMode)
 	{
-		if (file == null || file.Length == 0)
+		if (files == null || files.Count == 0)
 		{
-			ViewBag.Message = "Please select a PDF file.";
+			ViewBag.Message = "Please select at least one PDF file.";
+			return await Index();
+		}
+
+		// Фильтруем только PDF
+		var pdfFiles = files.Where(f => Path.GetExtension(f.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
+		if (pdfFiles.Count == 0)
+		{
+			ViewBag.Message = "No PDF files found in the selection.";
 			return await Index();
 		}
 
 		try
 		{
-			// 1. Зберігаємо файл фізично
+			// 1. Зберігаємо файли фізично
 			var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 			if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-			// Генеруємо унікальне ім'я файлу
-			var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
-			var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-			await using (var fs = new FileStream(filePath, FileMode.Create))
+			var uploadDataList = new List<IngestionUploadData>();
+			foreach (var file in pdfFiles)
 			{
-				await file.CopyToAsync(fs);
+				// Генеруємо унікальне ім'я файлу
+				var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+				var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+				await using (var fs = new FileStream(filePath, FileMode.Create))
+				{
+					await file.CopyToAsync(fs);
+				}
+				uploadDataList.Add(new IngestionUploadData(filePath));
 			}
 
-			var res =await ingestionService.IngestFileAsync(new IngestionUploadData(filePath));
+			if (uploadMode == "folder")
+			{
+				var results = await ingestionService.IngestFilesAsync(uploadDataList);
+				var success = results.GetSuccessIngestions();
+				if (success.Any())
+				{
+					return Ok(new
+					{
+						message = $"Uploaded {results.IngestionCount} files from folder",
+						chunks = results.ChunksCount
+					});
+				}
+				
+				return BadRequest(string.Join("; ", results.GetFailIngestions().Select(r => r.Message)));
+			}
+			else
+			{
+				// Випадок одного файлу (або якщо вибрано режим file, беремо перший PDF)
+				var res = await ingestionService.IngestFileAsync(uploadDataList[0]);
 
-			if (res.IsSuccess) return Ok(new { message = $"Uploaded {file.FileName}", chunks = res.ChunksCount });
-			return BadRequest(res.Message);
+				if (res.IsSuccess)
+					return Ok(new
+					{
+						message = $"Uploaded {pdfFiles[0].FileName}",
+						chunks = res.ChunksCount
+					});
+				return BadRequest(res.Message);
+			}
 		}
 		catch (Exception ex)
 		{

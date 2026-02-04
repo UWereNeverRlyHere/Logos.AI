@@ -17,10 +17,18 @@ namespace Logos.AI.Engine.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.12");
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Domain.Knowledge.Document", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Document", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocumentDescription")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocumentTitle")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FileName")
@@ -48,7 +56,7 @@ namespace Logos.AI.Engine.Migrations
                     b.ToTable("Documents");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Domain.Knowledge.DocumentChunk", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.DocumentChunk", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -74,9 +82,9 @@ namespace Logos.AI.Engine.Migrations
                     b.ToTable("Chunks");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Domain.Knowledge.DocumentChunk", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.DocumentChunk", b =>
                 {
-                    b.HasOne("Logos.AI.Abstractions.Domain.Knowledge.Document", "Document")
+                    b.HasOne("Logos.AI.Abstractions.Knowledge.Document", "Document")
                         .WithMany("Chunks")
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -85,7 +93,7 @@ namespace Logos.AI.Engine.Migrations
                     b.Navigation("Document");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Domain.Knowledge.Document", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Document", b =>
                 {
                     b.Navigation("Chunks");
                 });

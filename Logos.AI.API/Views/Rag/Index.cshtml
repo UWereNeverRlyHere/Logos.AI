@@ -14,7 +14,7 @@
 
 <div class="container py-5">
     <h2 class="text-center mb-4">🔍 RAG Search Portal in .NET</h2>
-    <h5 class="text-center mb-4">[.NET 8, OpenAI Embedding , Qdrant Vector DB, Semantic Search, Data Source - PDF, Azure SQL DB]</h5>
+    <h5 class="text-center mb-4">[.NET 9, OpenAI Embedding , Qdrant Vector DB, Semantic Search, Data Source - PDF]</h5>
     <hr />
 
     @if (ViewBag.Message != null)
@@ -32,7 +32,11 @@
                     {
                         foreach (var source in ViewBag.AllDocuments)
                         {
-                            <li class="list-group-item">@source.FileName</li>
+                            <li class="list-group-item">
+                                <strong>@source.DocumentTitle</strong>
+                                <br />
+                                <small class="text-muted">@source.FileName</small>
+                            </li>
                         }
                     }
                     else
@@ -53,7 +57,17 @@
                         <div class="card-body">
                             <form asp-action="Upload" method="post" enctype="multipart/form-data">
                                 <div class="mb-3">
-                                    <input type="file" name="file" class="form-control" accept=".pdf" />
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="uploadMode" id="modeFile" value="file" checked onchange="toggleUploadMode()">
+                                        <label class="form-check-label" for="modeFile">File</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="uploadMode" id="modeFolder" value="folder" onchange="toggleUploadMode()">
+                                        <label class="form-check-label" for="modeFolder">Folder</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="file" id="fileInput" name="files" class="form-control" accept=".pdf" />
                                 </div>
                                 <button type="submit" class="btn btn-dark w-100">Upload & Index</button>
                             </form>
@@ -103,3 +117,19 @@
         </div>
     </div>
 </div>
+
+<script>
+    function toggleUploadMode() {
+        var fileInput = document.getElementById('fileInput');
+        var isFolder = document.getElementById('modeFolder').checked;
+        if (isFolder) {
+            fileInput.setAttribute('webkitdirectory', '');
+            fileInput.setAttribute('directory', '');
+            fileInput.multiple = true;
+        } else {
+            fileInput.removeAttribute('webkitdirectory');
+            fileInput.removeAttribute('directory');
+            fileInput.multiple = false;
+        }
+    }
+</script>

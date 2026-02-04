@@ -7,18 +7,27 @@ namespace Logos.AI.Abstractions.Knowledge;
 public record SimpleDocumentChunk
 {
 	/// <summary>
+	/// Унікальний ідентифікатор документа
+	/// </summary>
+	public Guid DocumentId { get; init; } = Guid.NewGuid();
+
+	/// <summary>
 	/// Ім'я файлу (наприклад, 'report.pdf').
 	/// </summary>
 	[Description("Ім'я файлу")]
 	public string FileName { get; init; } = string.Empty;
 	[Description("Можливий опис документа")]
 	[MaxLength(500)]
-	public string Description { get; init; } = string.Empty;
+	public string DocumentDescription { get; init; } = string.Empty;
 	/// <summary>
 	/// Назва документа (заголовок).
 	/// </summary>
 	[Description("Назва документу (заголовок)")]
 	public string DocumentTitle { get; private set; } = string.Empty;
+
+	[Description("Дата індексації")]
+	public DateTime IndexedAt { get; init; } = DateTime.UtcNow;
+
 	[Description("Фрагменти документа (чанки)")]
 	public List<SimpleChunk> Chunks { get; init; } = new();
 
@@ -29,7 +38,7 @@ public record SimpleDocumentChunk
 	{
 		FileName = data.FileName;
 		DocumentTitle = data.Title;
-		Description = data.Description;
+		DocumentDescription = data.Description;
 	}
 	public SimpleDocumentChunk(string fileName)
 	{

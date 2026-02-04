@@ -9,5 +9,5 @@ public interface IIngestionService
 	/// <summary>
 	/// Завантаження колекції документів
 	/// </summary>
-	Task<ICollection<IngestionResult>> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default);
+	Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default);
 }
