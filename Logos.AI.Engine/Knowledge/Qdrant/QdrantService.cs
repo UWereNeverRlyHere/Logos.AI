@@ -1,4 +1,5 @@
 ﻿using Google.Protobuf.Collections;
+using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Configuration;
@@ -36,20 +37,29 @@ public class QdrantService
             _logger.LogInformation("Qdrant collection '{CollectionName}' already exists", _collectionName);
         }
     }
-    public async Task UpsertChunkAsync(string pointId, float[] vector, Dictionary<string, object> payload, CancellationToken ct = default)
+    public async Task UpsertChunksAsync(IEnumerable<QdrantUpsertData> points, CancellationToken ct = default)
     {
-        var qdrantPayload = new MapField<string, Value>();
-        foreach (var kvp in payload)
+        var pointStructs = points.Select(p =>
         {
-            qdrantPayload.Add(kvp.Key, kvp.Value.ToQdrantValue());
+            var qdrantPayload = new MapField<string, Value>();
+            foreach (var kvp in p.Payload)
+            {
+                qdrantPayload.Add(kvp.Key, kvp.Value.ToQdrantValue());
+            }
+
+            return new PointStruct
+            {
+                // Используем GuidUtils для генерации стабильного Guid из строкового ID чанка
+                Id = GuidUtils.GenerateGuidFromSeed(p.PointId),
+                Vectors = p.Vector,
+                Payload = { qdrantPayload }
+            };
+        }).ToList();
+
+        if (pointStructs.Count > 0)
+        {
+            await _client.UpsertAsync(_collectionName, pointStructs, cancellationToken: ct);
         }
-        var point = new PointStruct
-        {
-            Id = QdrantMapper.GenerateGuidFromSeed(pointId),
-            Vectors = vector,
-            Payload = { qdrantPayload }
-        };
-        await _client.UpsertAsync(_collectionName, [point], cancellationToken: ct);
     }
 
     public async Task<List<KnowledgeChunk>> SearchAsync(float[] vector, CancellationToken ct = default)

@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 namespace Logos.AI.Abstractions.Knowledge;
+
 /// <summary>
 /// Запис для проміжного результату після, розбиття документу на чанки
 /// </summary>
@@ -9,8 +10,7 @@ public record SimpleDocumentChunk
 	/// <summary>
 	/// Унікальний ідентифікатор документа
 	/// </summary>
-	public Guid DocumentId { get; init; } = Guid.NewGuid();
-
+	public Guid DocumentId { get; private init; }
 	/// <summary>
 	/// Ім'я файлу (наприклад, 'report.pdf').
 	/// </summary>
@@ -30,12 +30,10 @@ public record SimpleDocumentChunk
 
 	[Description("Фрагменти документа (чанки)")]
 	public List<SimpleChunk> Chunks { get; init; } = new();
-
-	public SimpleDocumentChunk()
-	{
-	}
+	
 	public SimpleDocumentChunk(IngestionUploadData data)
 	{
+		DocumentId = data.DocumentId;
 		FileName = data.FileName;
 		DocumentTitle = data.Title;
 		DocumentDescription = data.Description;
@@ -55,7 +53,6 @@ public record SimpleDocumentChunk
 		Chunks.AddRange(chunks);
 	}
 };
-
 public record SimpleChunk
 {
 	/// <summary>

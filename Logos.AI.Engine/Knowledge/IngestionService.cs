@@ -20,21 +20,27 @@ public class IngestionService(
 	public async Task<IngestionResult> IngestFileAsync(IngestionUploadData uploadData, CancellationToken ct = default)
 	{
 		var stopwatch = Stopwatch.StartNew();
+		var docId = uploadData.DocumentId;		
+		var existingDoc = await sqlChunkService.GetDocumentByIdAsync(docId, ct);
+		if (existingDoc != null)
+		{
+			stopwatch.Stop();
+			return IngestionResult.CreateExists(stopwatch, existingDoc);
+		}
 		if (!pdfService.TryChunkDocument(uploadData, out SimpleDocumentChunk chunkResult, out var error))
 		{
 			stopwatch.Stop();
-			return await Task.FromResult(IngestionResult.CreateFail(stopwatch, $"Parsing failed: {error}"));
+			return IngestionResult.CreateFail(stopwatch, $"Parsing failed: {error}");
 		}
-		
-		var docId = chunkResult.DocumentId;
 		await sqlChunkService.SaveDocumentAsync(uploadData.FileName, uploadData.FilePath, chunkResult, ct);
-		
-		await qdrantService.EnsureCollectionAsync(ct);
+		var texts = chunkResult.Chunks.Select(c => c.Content);
+		var embeddingResults = await embeddingService.GetEmbeddingsAsync(texts, ct);
 		int count = 0;
 		var tokensRes = new List<IngestionTokenUsageDetails>();
+		var pointsToUpsert = new List<QdrantUpsertData>();
 		foreach (var chunk in chunkResult.Chunks)
 		{
-			var embeddingResult = await embeddingService.GetEmbeddingAsync(chunk.Content, ct);
+			var embeddingResult = embeddingResults[count];
 			var vector = embeddingResult.Vector;
 			var pointId = $"{docId}-{count}";
 			var payload = KnowledgeDictionary.Create()
@@ -46,8 +52,12 @@ public class IngestionService(
 				.SetFullText(chunk.Content)
 				.SetIndexedAt(chunkResult.IndexedAt)
 				.GetPayload();
-
-			await qdrantService.UpsertChunkAsync(pointId, vector.ToArray(), payload, ct);
+			pointsToUpsert.Add(new QdrantUpsertData()
+			{
+				PointId = pointId,
+				Vector = vector.ToArray(),
+				Payload = payload
+			});
 			tokensRes.Add(new IngestionTokenUsageDetails
 			{
 				Content = chunk.Content,
@@ -55,11 +65,16 @@ public class IngestionService(
 			});
 			count++;
 		}
+		if (pointsToUpsert.Count > 0)
+		{
+			await qdrantService.UpsertChunksAsync(pointsToUpsert, ct);
+		}
 		stopwatch.Stop();
 		return IngestionResult.CreateSuccess(stopwatch,chunkResult, tokensRes);
 	}
 	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
 	{
+		await qdrantService.EnsureCollectionAsync(ct);
 		var stopwatch = Stopwatch.StartNew();
 		var results = new ConcurrentBag<IngestionResult>();
 		var parallelOptions = new ParallelOptions
@@ -73,6 +88,7 @@ public class IngestionService(
 			results.Add(result);
 		});
 		stopwatch.Stop();
+		
 		return new BulkIngestionResult(stopwatch.Elapsed.TotalSeconds, results.ToList());
 	}
 }

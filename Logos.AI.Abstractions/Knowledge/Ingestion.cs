@@ -8,11 +8,21 @@ public record IngestionUploadData
 	private string _fileName = string.Empty;
 	private string _title = string.Empty;
 	private string _description = string.Empty;
+	private readonly byte[] _fileData = [];
+	public Guid DocumentId { get; private set; }
 	public string FileName { get => _fileName; set => _fileName = value; }
 	public string FilePath { get; set; } = string.Empty;
 	public string Title { get => _title; set => _title = value; }
 	public string Description { get => _description; init => _description = value; }
-	public byte[] FileData { get; init; } = [];
+	public byte[] FileData
+	{
+		get => _fileData;
+		private init
+		{
+			_fileData = value;
+			DocumentId = GuidUtils.GenerateGuidFromSeed(_fileData);
+		}
+	}
 	public IngestionUploadData(byte[] fileData, string fileName)
 	{
 		try
@@ -77,6 +87,7 @@ public record IngestionResult
 	[Description("Загальний час виконання всієї операції (в секундах)")]
 	public required double TotalProcessingTimeSeconds { get; init;}
 	public bool IsSuccess { get; init; } = false;
+	public bool IsAlreadyExists { get; init; } = false;
 	public string FileName { get; init; } = string.Empty;
 	public string DocumentTitle { get; init; } = string.Empty;
 	public int ChunksCount { get; init; }
@@ -99,7 +110,7 @@ public record IngestionResult
 	}
 	public static IngestionResult CreateSuccess(double totalProcessingTimeSeconds, SimpleDocumentChunk chunkResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
 	{
-		tokenUsageDetails = tokenUsageDetails.OrderBy(x=>x.ContentLength).Distinct().ToList();
+		tokenUsageDetails = tokenUsageDetails.OrderBy(x=>x.ContentLength).ToList();
 		return new IngestionResult
 		{
 			TotalProcessingTimeSeconds = totalProcessingTimeSeconds,
@@ -117,6 +128,19 @@ public record IngestionResult
 	public static IngestionResult CreateSuccess(Stopwatch stopwatch, SimpleDocumentChunk chunkResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
 	{
 		return CreateSuccess(stopwatch.Elapsed.TotalSeconds, chunkResult, tokenUsageDetails);
+	}
+	public static IngestionResult CreateExists(Stopwatch stopwatch, Document doc)
+	{
+		return new IngestionResult
+		{
+			TotalProcessingTimeSeconds = stopwatch.Elapsed.TotalSeconds,
+			IsSuccess = true, 
+			IsAlreadyExists = true,
+			Message = "Document already exists (skipped)",
+			FileName = doc.FileName,
+			DocumentTitle = doc.DocumentTitle,
+			ChunksCount = doc.Chunks.Count
+		};
 	}
 };
 

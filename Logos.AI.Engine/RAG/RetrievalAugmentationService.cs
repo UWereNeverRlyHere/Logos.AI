@@ -222,6 +222,7 @@ public class RetrievalAugmentationService(
 				logger.LogDebug("Processing query: '{Query}'", query);
 				// 1. Векторизація тексту запиту (Embedding)
 				logger.LogDebug("Generating embedding for query: '{Query}'", query);
+				//TODO переделать на параллельный поиск
 				var embedResult = await embeddingService.GetEmbeddingAsync(query, token);
 				logger.LogInformation("Embedding generated for '{Query}'. Tokens: {Tokens}", 
 					query, embedResult.EmbeddingTokensSpent.TotalTokenCount);

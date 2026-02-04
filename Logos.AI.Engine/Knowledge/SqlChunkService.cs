@@ -10,6 +10,14 @@ namespace Logos.AI.Engine.Knowledge;
 /// </summary>
 public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> logger)
 {
+	public async Task<Document?> GetDocumentByIdAsync(Guid id, CancellationToken ct = default)
+	{
+		return await dbContext.Documents
+			.Include(d => d.Chunks)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(d => d.Id == id, ct);
+	}
+
 	/// <summary>
 	/// Зберігає документ та його фрагменти в базу.
 	/// </summary>
@@ -21,11 +29,10 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 	{
 		// 1. Перевірка дублікатів
 		var existing = await dbContext.Documents
-			.FirstOrDefaultAsync(d => d.FileName == fileName, ct);
-
+			.FirstOrDefaultAsync(d => d.Id == simpleDocumentChunk.DocumentId, ct);
 		if (existing != null)
 		{
-			logger.LogWarning("Document {FileName} already exists. Skipping SQL save.", fileName);
+			logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save.", existing.Id);
 			return existing.Id;
 		}
 
@@ -58,7 +65,7 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 		dbContext.Documents.Add(document);
 		await dbContext.SaveChangesAsync(ct);
 
-		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved).", fileName, chunksEntities.Count);
+		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", fileName, chunksEntities.Count);
 		return document.Id;
 	}
 

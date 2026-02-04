@@ -6,11 +6,6 @@ using Qdrant.Client.Grpc;
 namespace Logos.AI.Engine.Knowledge.Qdrant;
 public static class QdrantMapper
 {
-	public static  Guid GenerateGuidFromSeed(string input)
-	{
-		using var md5 = MD5.Create();
-		return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(input)));
-	}
 	public static KnowledgeDictionary ToKnowledgeDictionary(this MapField<string, Value> payload)
 	{
 		var dict = new KnowledgeDictionary();
