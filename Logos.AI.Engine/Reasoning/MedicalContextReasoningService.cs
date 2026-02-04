@@ -48,19 +48,15 @@ public class MedicalContextReasoningService(
 		return await AnalyzeAsync(request.SerializeToJson(), ct);
 	}
 
-	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(string originalQuery, KnowledgeChunk chunk, CancellationToken ct = default)
+	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default)
 	{
 		try
 		{
 			// Формуємо легкий payload, щоб не ганяти весь JSON пацієнта
 			var evaluationPayload = new
 			{
-				UserQuery = originalQuery,
-				RetrievedChunk = new
-				{
-					Source = chunk.FileName,
-					Content = chunk.Content
-				}
+				UserQuery = retrievalResult.Query,
+				FoundChunks = retrievalResult.FoundChunks
 			};
 
 			var reqData = new LlmRequestDto
@@ -84,10 +80,10 @@ public class MedicalContextReasoningService(
 			{
 				Data = new RelevanceEvaluationResult
 				{
-					IsRelevant = true,
 					Score = 0.5,
 					RelevanceLevel = "Unchecked",
-					Reasoning = "Error during AI validation"
+					Reasoning = "Error during AI validation",
+					RelevantChunkIds = new ()
 				},
 				TokenUsage = new Abstractions.Common.TokenUsageInfo(),
 				LogProbs = []

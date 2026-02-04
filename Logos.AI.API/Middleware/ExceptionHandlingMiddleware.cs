@@ -2,7 +2,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Logos.AI.Abstractions.Exceptions;
-
 namespace Logos.AI.API.Middleware;
 
 public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
@@ -22,13 +21,15 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
     private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        var response = new ErrorResponse();
         var statusCode = HttpStatusCode.InternalServerError;
         var message = exception.Message;
+        object? data = null;
         switch (exception)
         {
             case LogosException logosException:
                 statusCode =logosException.HttpStatusCode;
+                message = logosException.Message;
+                data = logosException.Data;
                 break;
             
             case InvalidOperationException:
@@ -50,15 +51,23 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
             WriteIndented = true,
             RespectNullableAnnotations = true,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };213
+        };
+        var response = new ErrorResponse
+        {
+            Code = statusCode.ToString(),
+            Message = message,
+            Details = exception.StackTrace,
+            Data = data
+        };
         return context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
     }
 }
 
 public record ErrorResponse
 {
-    public string Code { get; set; }
-    public string Message { get; set; }
-    public string Details { get; set; }
-    public object Data { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string? Details { get; set; }
+    public object? Data { get; set; }
+    
 }

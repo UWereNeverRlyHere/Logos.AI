@@ -7,6 +7,7 @@ namespace Logos.AI.Abstractions.Knowledge;
 /// </summary>
 public record KnowledgeChunk
 {
+	public Guid Id { get; init; } = Guid.NewGuid();
 	/// <summary>
 	/// Унікальний ідентифікатор документа, до якого належить цей фрагмент.
 	/// </summary>

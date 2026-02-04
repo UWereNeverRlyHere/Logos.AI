@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel;
+using System.Text.Json.Serialization;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Validation;
 namespace Logos.AI.Abstractions.RAG;
 
 public record RetrievalAugmentationResult
@@ -12,6 +14,8 @@ public record RetrievalAugmentationResult
 	
 	[Description("Середній Score релевантності по всім унікальним чанкам")]
 	public float GlobalAverageScore { get; private set;}
+	[Description("Результат перевірки впевненості моделі, після виділення медичного контексту")]
+	public ConfidenceValidationResult MedicalContextConfidence { get; init; } = new();
 	[Description("Детальна історія: який запит -> який вектор -> які чанки знайшли")]
 	public ICollection<RetrievalResult> RetrievalResults { get; init; } = new List<RetrievalResult>();
 	/// <summary>
@@ -33,11 +37,11 @@ public record RetrievalAugmentationResult
 	}	
 
 	
-	public RetrievalAugmentationResult(double totalProcessingTimeSeconds, ICollection<RetrievalResult> retrievalResults )
+	public RetrievalAugmentationResult(double totalProcessingTimeSeconds, ConfidenceValidationResult confidence, ICollection<RetrievalResult> retrievalResults )
 	{
 		TotalProcessingTimeSeconds = totalProcessingTimeSeconds;
 		RetrievalResults = retrievalResults;
-		
+		MedicalContextConfidence = confidence;
 		var totalInput = RetrievalResults.Sum(s => s.Embedding.GetInputTokenCount());
 		var totalTotal = RetrievalResults.Sum(s => s.Embedding.GetTotalTokenCount());
 		FullEmbeddingTokensSpent =  new TokenUsageInfo(totalInput, totalTotal);
@@ -57,6 +61,8 @@ public record RetrievalResult
 	[Description("Чанки, знайдені саме для цього запиту (сирі дані)")]
 	public EmbeddingResult Embedding { get; init; }
 	public ICollection<KnowledgeChunk> FoundChunks { get; init; } = new List<KnowledgeChunk>();
+	public ICollection<RelevanceEvaluationResult> RelevanceEvaluations { get; init; } = new List<RelevanceEvaluationResult>();
+	
 	[Description("Середній Score для цього конкретного запиту")]
 	public float AverageScore => FoundChunks.Any() ? FoundChunks.Average(c => c.Score) : 0f;
 	public RetrievalResult(string query,EmbeddingResult embedding, ICollection<KnowledgeChunk> chunks, double durationSeconds)
@@ -85,15 +91,37 @@ public record EmbeddingResult
 }
 public record RelevanceEvaluationResult
 {
-	[Description("Чи є цей фрагмент корисним для відповіді на запит")]
-	public required bool IsRelevant { get; init; }
-
-	[Description("Числова оцінка релевантності від 0.0 до 1.0")]
-	public required double Score { get; init; }
-
-	[Description("Категорія релевантності: High, Medium, Low, Irrelevant")]
+	/// <summary>
+	/// Загальна категорія релевантності для всієї групи чанків (документа).
+	/// </summary>
+	[Description("Загальна оцінка релевантності документа: High, Medium, Low, Irrelevant")]
 	public required string RelevanceLevel { get; init; }
 
-	[Description("Коротке пояснення, чому виставлено таку оцінку (1 речення)")]
+	/// <summary>
+	/// Числова оцінка (0.0 - 1.0).
+	/// </summary>
+	[Description("Середня числова оцінка корисності (0.0 - 1.0)")]
+	public required double Score { get; init; }
+
+	/// <summary>
+	/// Список ID тільки тих чанків, які пройшли перевірку.
+	/// </summary>
+	[Description("Список ідентифікаторів (Guid) лише тих фрагментів, які містять корисну інформацію.")]
+	public required List<Guid> RelevantChunkIds { get; init; } = new();
+
+	/// <summary>
+	/// Пояснення рішення моделі.
+	/// </summary>
+	[Description("Коротке пояснення: чому обрано ці фрагменти або чому відхилено документ.")]
 	public required string Reasoning { get; init; }
+
+	// --- Допоміжні властивості (не для LLM, а для зручності коду) ---
+
+	/// <summary>
+	/// Швидка перевірка: чи є хоч щось корисне.
+	/// </summary>
+	[JsonIgnore] 
+	public bool IsRelevant => RelevantChunkIds.Count > 0 && Score >= 0.5;
+	[JsonIgnore]
+	public ConfidenceValidationResult ConfidenceValidationResult { get; set; } = new();
 }
