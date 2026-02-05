@@ -50,7 +50,7 @@ public class RagController(
 		{
 			if (Directory.Exists(path))
 			{
-				var dirFiles = Directory.GetFiles(path, "*.pdf");
+				var dirFiles = Directory.GetFiles(path, "*.pdf", SearchOption.AllDirectories);
 				foreach (var f in dirFiles)
 				{
 					uploadDataList.Add(new IngestionUploadData(f));
@@ -127,8 +127,6 @@ public class RagController(
 		}
 		try
 		{
-			// Переконуємось, що колекція існує перед пошуком
-			await qdrantService.EnsureCollectionAsync();
 			// 1. Виконуємо пошук через RagQueryService
 			var searchResults = await retrievalAugmentationService.RetrieveContextAsync(new[] { query });
 			var results = searchResults.SelectMany(r => r.FoundChunks).ToList();

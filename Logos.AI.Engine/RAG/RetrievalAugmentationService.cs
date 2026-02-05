@@ -212,7 +212,6 @@ public class RetrievalAugmentationService(
 
 		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
 		// Перевірка наявності колекції у векторній БД
-		await qdrantService.EnsureCollectionAsync(ct);
 		await Parallel.ForEachAsync(queries, parallelOptions, async (query, token) =>
 		{
 			// Таймер для вимірювання часу обробки конкретного підзапиту

@@ -28,14 +28,8 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         {
             case LogosException logosException:
                 statusCode =logosException.HttpStatusCode;
-                message = logosException.Message;
                 data = logosException.Data;
                 break;
-            
-            case InvalidOperationException:
-                statusCode = HttpStatusCode.BadRequest;
-                break;
-
             default:
                 logger.LogError(exception, "Unhandled exception occurred");
                 message = $"An internal server error occurred: {exception.Message}"; 

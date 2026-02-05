@@ -29,9 +29,12 @@ app.MapControllers();
 app.MapControllerRoute(
 	name: "default",
 	pattern: "{controller=Home}/{action=Index}/{id?}");
+
 using (var scope = app.Services.CreateScope())
 {
 	var dbContext = scope.ServiceProvider.GetRequiredService<Logos.AI.Engine.Data.LogosDbContext>();
 	await dbContext.Database.MigrateAsync();
+	var qdrantService = scope.ServiceProvider.GetRequiredService<Logos.AI.Abstractions.Knowledge.Contracts.IVectorStorageService>();
+	await qdrantService.EnsureCollectionAsync();
 }
 await app.RunAsync();

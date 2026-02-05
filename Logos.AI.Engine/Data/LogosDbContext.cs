@@ -3,12 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Logos.AI.Engine.Data;
 
-public class LogosDbContext : DbContext
+public class LogosDbContext(DbContextOptions<LogosDbContext> options) : DbContext(options)
 {
-	public LogosDbContext(DbContextOptions<LogosDbContext> options) : base(options)
-	{
-	}
-
 	// Таблиці
 	public DbSet<Document> Documents { get; set; }
 	public DbSet<DocumentChunk> Chunks { get; set; }

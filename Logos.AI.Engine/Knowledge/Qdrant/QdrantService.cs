@@ -2,7 +2,6 @@
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
-using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -92,4 +92,5 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 			.OrderByDescending(d => d.UploadedAt)
 			.ToListAsync(ct);
 	}
+	public async Task SaveChangesAsync(CancellationToken ct = default) => await dbContext.SaveChangesAsync(ct);
 }

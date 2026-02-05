@@ -1,6 +1,4 @@
-﻿using Logos.AI.Abstractions.Knowledge;
-
-namespace Logos.AI.Abstractions.Knowledge.Contracts;
+﻿namespace Logos.AI.Abstractions.Knowledge.Contracts;
 
 public interface IDocumentChunkService
 {

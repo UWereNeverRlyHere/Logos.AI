@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Engine.RAG;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 namespace Logos.AI.Engine.Knowledge;
 /// <summary>
@@ -13,6 +14,7 @@ public class IngestionService(
 	OpenAIEmbeddingService    embeddingService,
 	IVectorStorageService qdrantService,
 	IStorageService  storageService,
+	IServiceScopeFactory scopeFactory,
 	ILogger<IngestionService> logger) : IIngestionService
 {
 	public async Task<IngestionResult> IngestFileAsync(IngestionUploadData uploadData, CancellationToken ct = default)
@@ -39,10 +41,6 @@ public class IngestionService(
 		}
 
 		logger.LogInformation("PDF parsed successfully. Chunks count: {Count}", chunkResult.Chunks.Count);
-
-		// Зберігаємо метадані в SQL
-		await storageService.SaveDocumentAsync(uploadData.FileName, uploadData.FilePath, chunkResult, ct);
-		logger.LogDebug("Document metadata and chunks saved to SQL database");
 
 		var texts = chunkResult.Chunks.Select(c => c.Content).ToList();
 		
@@ -85,15 +83,16 @@ public class IngestionService(
 			});
 			count++;
 		}
-
-		// Відправляємо дані в Qdrant
 		if (pointsToUpsert.Count > 0)
 		{
+			// Відправляємо дані в Qdrant
 			logger.LogInformation("Upserting {Count} points to Qdrant...", pointsToUpsert.Count);
 			await qdrantService.UpsertChunksAsync(pointsToUpsert, ct);
 			logger.LogDebug("Qdrant upsert completed");
+			// Зберігаємо метадані в SQL
+			await storageService.SaveDocumentAsync(uploadData.FileName, uploadData.FilePath, chunkResult, ct);
+			logger.LogDebug("Document metadata and chunks saved to SQL database");
 		}
-
 		stopwatch.Stop();
 		logger.LogInformation("Ingestion completed for {FileName} in {Elapsed}s. Total chunks: {Chunks}", 
 			uploadData.FileName, stopwatch.Elapsed.TotalSeconds, chunkResult.Chunks.Count);
@@ -103,8 +102,6 @@ public class IngestionService(
 	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
 	{
 		logger.LogInformation("Starting bulk ingestion for {Count} files", uploadData.Count);
-		await qdrantService.EnsureCollectionAsync(ct);
-		
 		var stopwatch = Stopwatch.StartNew();
 		var results = new ConcurrentBag<IngestionResult>();
 		var parallelOptions = new ParallelOptions
@@ -115,7 +112,9 @@ public class IngestionService(
 
 		await Parallel.ForEachAsync(uploadData, parallelOptions, async (item, token) =>
 		{
-			var result = await IngestFileAsync(item, token);
+			using var scope = scopeFactory.CreateScope();
+			var scopedIngestionService = scope.ServiceProvider.GetRequiredService<IIngestionService>();
+			var result = await scopedIngestionService.IngestFileAsync(item, token);
 			results.Add(result);
 		});
 		

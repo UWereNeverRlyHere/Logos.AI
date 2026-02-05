@@ -31,4 +31,6 @@ public interface IStorageService
 	/// Получить список всех документов
 	/// </summary>
 	Task<List<Document>> GetAllDocumentsAsync(CancellationToken ct = default);
+	
+	Task SaveChangesAsync(CancellationToken ct = default);
 }
