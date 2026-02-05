@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf.Collections;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 namespace Logos.AI.Engine.Knowledge.Qdrant;
-public class QdrantService
+public class QdrantService : IVectorStorageService
 {
     private readonly ILogger<QdrantService> _logger;
     private readonly QdrantClient _client;

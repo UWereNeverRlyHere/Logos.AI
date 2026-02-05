@@ -24,26 +24,33 @@ public static class LogosEngineExtensions
 {
 	public static void AddLogosEngine(this IHostApplicationBuilder builder)
 	{
+		// База даних та збереження (Database & Persistence)
 		var connectionString = builder.Configuration.GetConnectionString("LogosDatabase");
 		builder.Services.AddDbContext<LogosDbContext>(options => options.UseSqlite(connectionString));
+		builder.Services.AddScoped<IStorageService, SqlChunkService>();
 
-		builder.Services.AddScoped<QdrantService>();
-
-		builder.Services.AddScoped<OpenAIEmbeddingService>();
-		builder.Services.AddScoped<SqlChunkService>();
-		builder.Services.AddScoped<PdfChunkService>();
-		
-		builder.Services.AddScoped<LlmClientWrapper>();
-		builder.Services.AddScoped<IMedicalContextReasoningService,MedicalContextReasoningService>();
-		builder.Services.AddScoped<IMedicalAnalyzingReasoningService,MedicalAnalyzingReasoningService>();
-		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
+		// База знань (Knowledge Base & Ingestion)
+		builder.Services.AddScoped<IVectorStorageService,QdrantService>();
+		builder.Services.AddScoped<IDocumentChunkService, PdfChunkService>();
 		builder.Services.AddScoped<IIngestionService, IngestionService>();
+		
+		// RAG та Ембеддінги (RAG & Embeddings)
+		builder.Services.AddScoped<OpenAIEmbeddingService>();
+		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
+
+		// Інтелект та міркування (Reasoning & AI Logic)
+		builder.Services.AddScoped<LlmClientWrapper>();
+		builder.Services.AddScoped<IMedicalContextReasoningService, MedicalContextReasoningService>();
+		builder.Services.AddScoped<IMedicalAnalyzingReasoningService, MedicalAnalyzingReasoningService>();
+		
+		// Валідація (Validation)
 		builder.Services.AddScoped<IConfidenceValidator, ConfidenceValidator>();
 
+		// Конфігурації та Фабрики (Configuration & Factories)
 		builder.ConfigureOptions();
-
 		builder.Services.AddSingleton<IChatClientFactory, ChatClientFactory>();
 		
+		// Зовнішні клієнти (External Clients)
 		builder.Services.AddSingleton<QdrantClient>(sp =>
 		{
 			var options = sp.GetRequiredService<IOptions<RagOptions>>().Value;

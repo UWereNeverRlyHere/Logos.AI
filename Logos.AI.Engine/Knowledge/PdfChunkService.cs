@@ -1,13 +1,13 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.RAG;
+using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 namespace Logos.AI.Engine.Knowledge;
 
-public class PdfChunkService
+public class PdfChunkService : IDocumentChunkService
 {
 	private readonly int _chunkSizeWords;
 	private readonly int _chunkOverlapWords;

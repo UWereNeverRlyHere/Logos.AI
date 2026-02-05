@@ -1,4 +1,5 @@
 ﻿using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Engine.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ namespace Logos.AI.Engine.Knowledge;
 /// Сервіс для збереження "сирих" текстів та метаданих у SQLite.
 /// Це наш "холодний" архів, з якого можна відновити Qdrant.
 /// </summary>
-public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> logger)
+public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> logger) : IStorageService
 {
 	public async Task<Document?> GetDocumentByIdAsync(Guid id, CancellationToken ct = default)
 	{

@@ -3,15 +3,13 @@ using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
-using Logos.AI.Engine.Knowledge;
-using Logos.AI.Engine.Knowledge.Qdrant;
 using Microsoft.AspNetCore.Mvc;
 namespace Logos.AI.API.Controllers;
 
 [Route("rag")]
 public class RagController(
-	SqlChunkService               sqlChunkService,
-	QdrantService                 qdrantService,
+	IStorageService      storageService,
+	IVectorStorageService qdrantService,
 	IRetrievalAugmentationService retrievalAugmentationService,
 	IIngestionService             ingestionService) : Controller
 {
@@ -19,7 +17,7 @@ public class RagController(
 	[HttpGet("documents")]
 	public async Task<IActionResult> GetDocuments()
 	{
-		var docs = await sqlChunkService.GetAllDocumentsAsync();
+		var docs = await storageService.GetAllDocumentsAsync();
 		return Ok(docs.Select(d => new { d.Id, d.DocumentTitle, d.FileName, d.UploadedAt }));
 	}
 	
@@ -28,7 +26,7 @@ public class RagController(
 	public async Task<IActionResult> Index()
 	{
 		// Завантажуємо список документів з SQL (це наше джерело правди для списків)
-		var docs = await sqlChunkService.GetAllDocumentsAsync();
+		var docs = await storageService.GetAllDocumentsAsync();
 		ViewBag.AllDocuments = docs;
 
 		// Повертаємо пустий список результатів, щоб View не ламалася
@@ -155,14 +153,14 @@ public class RagController(
 				ViewBag.Answer = "No relevant information found in the knowledge base.";
 			}
 			// 3. Оновлюємо список документів для сайдбару
-			var docs = await sqlChunkService.GetAllDocumentsAsync();
+			var docs = await storageService.GetAllDocumentsAsync();
 			ViewBag.AllDocuments = docs;
 			return View("Index", results);
 		}
 		catch (Exception ex)
 		{
 			ViewBag.Message = $"Error during search: {ex.Message}";
-			var docs = await sqlChunkService.GetAllDocumentsAsync();
+			var docs = await storageService.GetAllDocumentsAsync();
 			ViewBag.AllDocuments = docs;
 			return View("Index", new List<KnowledgeChunk>());
 		}
@@ -249,7 +247,7 @@ public class RagController(
 		}
 
 		// Оновлюємо список документів і повертаємо View
-		var finalDocs = await sqlChunkService.GetAllDocumentsAsync();
+		var finalDocs = await storageService.GetAllDocumentsAsync();
 		ViewBag.AllDocuments = finalDocs;
 
 		return View("Index", new List<KnowledgeChunk>());

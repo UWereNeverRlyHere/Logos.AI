@@ -2,19 +2,19 @@
 using System.Diagnostics;
 using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning.Contracts;
 using Logos.AI.Abstractions.Validation.Contracts;
 using Logos.AI.Engine.Extensions;
-using Logos.AI.Engine.Knowledge.Qdrant;
 using Microsoft.Extensions.Logging;
 
 namespace Logos.AI.Engine.RAG;
 
 public class RetrievalAugmentationService(
 	OpenAIEmbeddingService                embeddingService,
-	QdrantService                         qdrantService,
+	IVectorStorageService qdrantService,
 	IMedicalContextReasoningService       contextReasoningService,
 	IConfidenceValidator                  confidenceValidator,
 	ILogger<RetrievalAugmentationService> logger) : IRetrievalAugmentationService
