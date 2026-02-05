@@ -1,7 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 using Logos.AI.Engine.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -33,16 +34,16 @@ public class IngestionService(
 		}
 
 		// Розбиваємо PDF на чанки
-		if (!pdfService.TryChunkDocument(uploadData, out SimpleDocumentChunk chunkResult, out var error))
+		if (!pdfService.TryChunkDocument(uploadData, out SimpleDocumentChunk simpleDocChunk, out var error))
 		{
 			logger.LogError("Failed to parse PDF {FileName}: {Error}", uploadData.FileName, error);
 			stopwatch.Stop();
 			return IngestionResult.CreateFail(stopwatch, $"Parsing failed: {error}");
 		}
 
-		logger.LogInformation("PDF parsed successfully. Chunks count: {Count}", chunkResult.Chunks.Count);
+		logger.LogInformation("PDF parsed successfully. Chunks count: {Count}", simpleDocChunk.Chunks.Count);
 
-		var texts = chunkResult.Chunks.Select(c => c.Content).ToList();
+		var texts = simpleDocChunk.Chunks.Select(c => c.Content).ToList();
 		
 		// Отримуємо ембеддінги для всіх чанків одним запитом
 		logger.LogInformation("Generating embeddings for {Count} chunks...", texts.Count);
@@ -54,19 +55,19 @@ public class IngestionService(
 		var tokensRes = new List<IngestionTokenUsageDetails>();
 		var pointsToUpsert = new List<QdrantUpsertData>();
 
-		foreach (var chunk in chunkResult.Chunks)
+		foreach (var chunk in simpleDocChunk.Chunks)
 		{
 			var embeddingResult = embeddingResults[count];
 			var vector = embeddingResult.Vector;
 			var pointId = $"{docId}-{count}";
 			var payload = KnowledgeDictionary.Create()
 				.SetDocumentId(docId)
-				.SetFileName(chunkResult.FileName)
-				.SetDocumentTitle(chunkResult.DocumentTitle)
-				.SetDocumentDescription(chunkResult.DocumentDescription)
+				.SetFileName(simpleDocChunk.FileName)
+				.SetDocumentTitle(simpleDocChunk.DocumentTitle)
+				.SetDocumentDescription(simpleDocChunk.DocumentDescription)
 				.SetPageNumber(chunk.PageNumber)
 				.SetFullText(chunk.Content)
-				.SetIndexedAt(chunkResult.IndexedAt)
+				.SetIndexedAt(simpleDocChunk.IndexedAt)
 				.GetPayload();
 
 			pointsToUpsert.Add(new QdrantUpsertData()
@@ -90,14 +91,14 @@ public class IngestionService(
 			await qdrantService.UpsertChunksAsync(pointsToUpsert, ct);
 			logger.LogDebug("Qdrant upsert completed");
 			// Зберігаємо метадані в SQL
-			await storageService.SaveDocumentAsync(uploadData.FileName, uploadData.FilePath, chunkResult, ct);
+			await storageService.SaveDocumentAsync(uploadData, simpleDocChunk, ct);
 			logger.LogDebug("Document metadata and chunks saved to SQL database");
 		}
 		stopwatch.Stop();
 		logger.LogInformation("Ingestion completed for {FileName} in {Elapsed}s. Total chunks: {Chunks}", 
-			uploadData.FileName, stopwatch.Elapsed.TotalSeconds, chunkResult.Chunks.Count);
+			uploadData.FileName, stopwatch.Elapsed.TotalSeconds, simpleDocChunk.Chunks.Count);
 		
-		return IngestionResult.CreateSuccess(stopwatch, chunkResult, tokensRes);
+		return IngestionResult.CreateSuccess(stopwatch, simpleDocChunk, tokensRes);
 	}
 	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
 	{

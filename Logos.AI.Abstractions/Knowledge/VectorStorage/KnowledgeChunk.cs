@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel;
-namespace Logos.AI.Abstractions.Knowledge;
+namespace Logos.AI.Abstractions.Knowledge.VectorStorage;
 
 /// <summary>
 /// Представляє фрагмент знань (чанк), що зберігається у базі даних.
@@ -133,14 +133,11 @@ public class KnowledgeDictionary
 		{
 			// Безпечний парсинг Guid
 			DocumentId = Guid.TryParse(GetVal(KnowledgePayloadFields.DocumentId), out var g) ? g : Guid.Empty,
-
 			DocumentTitle = GetVal(KnowledgePayloadFields.DocumentTitle),
 			DocumentDescription = GetVal(KnowledgePayloadFields.DocumentDescription),
 			FileName = GetVal(KnowledgePayloadFields.FileName),
-
 			// Безпечний парсинг Int
 			PageNumber = int.TryParse(GetVal(KnowledgePayloadFields.PageNumber), out var p) ? p : 0,
-
 			Content = GetVal(KnowledgePayloadFields.FullText),
 			Score = score
 		};

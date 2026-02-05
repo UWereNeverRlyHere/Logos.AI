@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Microsoft.AspNetCore.Mvc;
@@ -213,7 +214,7 @@ public class RagController(
 			if (uploadMode == "folder")
 			{
 				var results = await ingestionService.IngestFilesAsync(uploadDataList);
-				var success = results.GetSuccessIngestions();
+				var success = results.GetSuccess();
 				if (success.Any())
 				{
 					return Ok(new
@@ -223,7 +224,7 @@ public class RagController(
 					});
 				}
 				
-				return BadRequest(string.Join("; ", results.GetFailIngestions().Select(r => r.Message)));
+				return BadRequest(string.Join("; ", results.GetFail().Select(r => r.Message)));
 			}
 			else
 			{

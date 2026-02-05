@@ -1,4 +1,4 @@
-﻿using Logos.AI.Abstractions.Knowledge.Contracts;
+﻿using Logos.AI.Abstractions.Knowledge._Contracts;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Abstractions.Reasoning.Contracts;

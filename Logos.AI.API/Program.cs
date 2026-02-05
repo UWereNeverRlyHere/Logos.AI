@@ -1,3 +1,4 @@
+using Logos.AI.Abstractions.Knowledge._Contracts;
 using Logos.AI.API.Configuration;
 using Logos.AI.API.Middleware;
 using Logos.AI.Engine.Extensions;
@@ -37,7 +38,7 @@ using (var scope = app.Services.CreateScope())
 	var dbContext = scope.ServiceProvider.GetRequiredService<Logos.AI.Engine.Data.LogosDbContext>();
 	await dbContext.Database.MigrateAsync();
 	await dbContext.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
-	var qdrantService = scope.ServiceProvider.GetRequiredService<Logos.AI.Abstractions.Knowledge.Contracts.IVectorStorageService>();
+	var qdrantService = scope.ServiceProvider.GetRequiredService<IVectorStorageService>();
 	await qdrantService.EnsureCollectionAsync();
 }
 await app.RunAsync();

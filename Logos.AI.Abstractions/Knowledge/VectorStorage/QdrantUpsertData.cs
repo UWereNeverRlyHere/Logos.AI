@@ -1,4 +1,4 @@
-﻿namespace Logos.AI.Abstractions.Knowledge;
+﻿namespace Logos.AI.Abstractions.Knowledge.VectorStorage;
 
 public record QdrantUpsertData
 {

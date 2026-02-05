@@ -2,7 +2,8 @@
 using System.Diagnostics;
 using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning.Contracts;

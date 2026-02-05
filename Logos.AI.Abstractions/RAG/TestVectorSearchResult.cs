@@ -1,4 +1,5 @@
 ﻿using Logos.AI.Abstractions.Knowledge;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 namespace Logos.AI.Abstractions.RAG;
 
 public record TestVectorSearchResult

@@ -1,6 +1,6 @@
-﻿using Logos.AI.Abstractions.Knowledge;
-
-namespace Logos.AI.Abstractions.Knowledge.Contracts;
+﻿using Logos.AI.Abstractions.Knowledge.Entities;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
+namespace Logos.AI.Abstractions.Knowledge._Contracts;
 
 /// <summary>
 /// Интерфейс для хранилища документов и их чанков.
@@ -16,11 +16,7 @@ public interface IStorageService
 	/// <summary>
 	/// Сохранить документ и его чанки
 	/// </summary>
-	Task<Guid> SaveDocumentAsync(
-		string                fileName,
-		string                filePath,
-		SimpleDocumentChunk   simpleDocumentChunk,
-		CancellationToken     ct = default);
+	Task<Guid> SaveDocumentAsync(IngestionUploadData uploadData, SimpleDocumentChunk simpleDocumentChunk, CancellationToken ct = default);
 
 	/// <summary>
 	/// Загрузить все чанки (например для переиндексации)

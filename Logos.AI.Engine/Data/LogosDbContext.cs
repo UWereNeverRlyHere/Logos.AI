@@ -1,6 +1,5 @@
-﻿using Logos.AI.Abstractions.Knowledge;
+﻿using Logos.AI.Abstractions.Knowledge.Entities;
 using Microsoft.EntityFrameworkCore;
-
 namespace Logos.AI.Engine.Data;
 
 public class LogosDbContext(DbContextOptions<LogosDbContext> options) : DbContext(options)
@@ -12,19 +11,28 @@ public class LogosDbContext(DbContextOptions<LogosDbContext> options) : DbContex
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		base.OnModelCreating(modelBuilder);
-
 		modelBuilder.Entity<Document>(entity =>
 		{
 			entity.HasKey(e => e.Id);
 			entity.HasMany(d => d.Chunks)
 				.WithOne(c => c.Document)
 				.HasForeignKey(c => c.DocumentId)
-				.OnDelete(DeleteBehavior.Cascade); 
+				.OnDelete(DeleteBehavior.Cascade);
+			
+			entity.HasOne(d => d.Content)
+				.WithOne(c => c.Document)
+				.HasForeignKey<DocumentContent>(c => c.DocumentId) // FK в таблице контента
+				.OnDelete(DeleteBehavior.Cascade)
+				.IsRequired();
 		});
-
 		modelBuilder.Entity<DocumentChunk>(entity =>
 		{
 			entity.HasKey(e => e.Id);
+		});
+		modelBuilder.Entity<DocumentContent>(entity =>
+		{
+			entity.ToTable("DocumentContents"); 
+			entity.HasKey(e => e.DocumentId); 
 		});
 	}
 }

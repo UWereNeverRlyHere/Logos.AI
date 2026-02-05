@@ -1,5 +1,7 @@
 ﻿using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.Entities;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 using Logos.AI.Engine.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,33 +25,20 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 	/// Зберігає документ та його фрагменти в базу.
 	/// </summary>
 	public async Task<Guid> SaveDocumentAsync(
-		string                        fileName,
-		string                        filePath,
+		IngestionUploadData uploadData,
 		SimpleDocumentChunk simpleDocumentChunk,
-		CancellationToken             ct = default)
+		CancellationToken   ct = default)
 	{
 		// 1. Перевірка дублікатів
 		var existing = await dbContext.Documents
 			.FirstOrDefaultAsync(d => d.Id == simpleDocumentChunk.DocumentId, ct);
 		if (existing != null)
 		{
-			logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save.", existing.Id);
+			logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save", existing.Id);
 			return existing.Id;
 		}
-
 		// 2. Створення документа
-		var document = new Document
-		{
-			Id = simpleDocumentChunk.DocumentId,
-			FileName = simpleDocumentChunk.FileName,
-			DocumentTitle = simpleDocumentChunk.DocumentTitle,
-			DocumentDescription = simpleDocumentChunk.DocumentDescription,
-			FilePath = filePath,
-			UploadedAt = simpleDocumentChunk.IndexedAt,
-			IsProcessed = true,
-			FileSizeBytes = File.Exists(filePath) ? new FileInfo(filePath).Length : 0
-		};
-
+		var document = Document.CreateFromSimpleDocumentChunk(uploadData, simpleDocumentChunk);
 		// 3. Мапінг чанків з правильними сторінками
 		var chunksEntities = simpleDocumentChunk.Chunks.Select(c => new DocumentChunk
 		{
@@ -59,14 +48,12 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 			Content = c.Content,
 			TokenCount = c.Content.Length / 4
 		}).ToList();
-
 		document.Chunks = chunksEntities;
-
 		// 4. Збереження
 		dbContext.Documents.Add(document);
 		await dbContext.SaveChangesAsync(ct);
 
-		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", fileName, chunksEntities.Count);
+		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", simpleDocumentChunk.FileName, chunksEntities.Count);
 		return document.Id;
 	}
 

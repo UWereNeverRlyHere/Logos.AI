@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 namespace Logos.AI.Abstractions.Knowledge;
 
 /// <summary>
@@ -7,30 +8,23 @@ namespace Logos.AI.Abstractions.Knowledge;
 /// </summary>
 public record SimpleDocumentChunk
 {
-	/// <summary>
-	/// Унікальний ідентифікатор документа
-	/// </summary>
+	[Description("Ідентифікатор документа. Вираховується з хешу файлу")]
 	public Guid DocumentId { get; private init; }
-	/// <summary>
-	/// Ім'я файлу (наприклад, 'report.pdf').
-	/// </summary>
 	[Description("Ім'я файлу")]
 	public string FileName { get; init; } = string.Empty;
 	[Description("Можливий опис документа")]
 	[MaxLength(500)]
 	public string DocumentDescription { get; init; } = string.Empty;
-	/// <summary>
-	/// Назва документа (заголовок).
-	/// </summary>
 	[Description("Назва документу (заголовок)")]
 	public string DocumentTitle { get; private set; } = string.Empty;
-
 	[Description("Дата індексації")]
 	public DateTime IndexedAt { get; init; } = DateTime.UtcNow;
-
+	[Description("Загальна кількість символів в документі")]
+	public int TotalCharacters { get; set; } 
+	[Description("Загальна кількість слів в документі")]
+	public int TotalWords { get; set; } 
 	[Description("Фрагменти документа (чанки)")]
 	public List<SimpleChunk> Chunks { get; init; } = new();
-	
 	public SimpleDocumentChunk(IngestionUploadData data)
 	{
 		DocumentId = data.DocumentId;
@@ -60,7 +54,6 @@ public record SimpleChunk
 	/// </summary>
 	[Description("Номер сторінки")]
 	public int PageNumber { get; init; }
-
 	/// <summary>
 	/// Текстовий вміст фрагмента.
 	/// </summary>

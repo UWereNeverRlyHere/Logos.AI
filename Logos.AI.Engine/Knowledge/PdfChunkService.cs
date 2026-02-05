@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.VectorStorage;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
@@ -40,11 +41,13 @@ public class PdfChunkService : IDocumentChunkService
 				error = "Could not extract text from PDF.";
 				return false;
 			}
-			if (rawPages.Count > 0)
+			foreach (var page in rawPages)
 			{
-				simpleDocumentChunk.SetTitleIfNotEmpty(ExtractTitleFromFirstPage(rawPages[0].Content));
+				simpleDocumentChunk.TotalCharacters += page.Content.Length;
+				simpleDocumentChunk.TotalWords += CountWords(page.Content);
 			}
-			// -------------------------------
+		
+			simpleDocumentChunk.SetTitleIfNotEmpty(ExtractTitleFromFirstPage(rawPages[0].Content));
 			simpleDocumentChunk.AddChunks(ChunkTextWithPages(rawPages));
 			return true;
 		}

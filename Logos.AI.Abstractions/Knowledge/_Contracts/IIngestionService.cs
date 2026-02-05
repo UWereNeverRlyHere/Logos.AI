@@ -1,4 +1,5 @@
-﻿namespace Logos.AI.Abstractions.Knowledge.Contracts;
+﻿using Logos.AI.Abstractions.Knowledge.VectorStorage;
+namespace Logos.AI.Abstractions.Knowledge._Contracts;
 
 public interface IIngestionService
 {

@@ -1,95 +1,47 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using Logos.AI.Abstractions.Common;
-namespace Logos.AI.Abstractions.Knowledge;
-
-public record IngestionUploadData
-{
-	private string _fileName = string.Empty;
-	private string _title = string.Empty;
-	private string _description = string.Empty;
-	private readonly byte[] _fileData = [];
-	public Guid DocumentId { get; private set; }
-	public string FileName { get => _fileName; set => _fileName = value; }
-	public string FilePath { get; set; } = string.Empty;
-	public string Title { get => _title; set => _title = value; }
-	public string Description { get => _description; init => _description = value; }
-	public byte[] FileData
-	{
-		get => _fileData;
-		private init
-		{
-			_fileData = value;
-			DocumentId = GuidUtils.GenerateGuidFromSeed(_fileData);
-		}
-	}
-	public IngestionUploadData(byte[] fileData, string fileName)
-	{
-		try
-		{
-			FileData = fileData;
-			_fileName = fileName;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw;
-		}
-	}
-	public IngestionUploadData(string path) : this(File.ReadAllBytes(path), Path.GetFileName(path))
-	{
-		FilePath = path;
-	}
-	public IngestionUploadData(string base64Content, string fileName) : this(Convert.FromBase64String(base64Content), fileName)
-	{
-	}
-	public IngestionUploadData SetDescription(string description)
-	{
-		_description = description;
-		return this;
-	}
-	public IngestionUploadData SetTitle(string title)
-	{
-		_title = title;
-		return this;
-	}
-	public IngestionUploadData SetFileName(string fileName)
-	{
-		_fileName = fileName;
-		return this;
-	}
-}
-
+using Logos.AI.Abstractions.Knowledge.Entities;
+namespace Logos.AI.Abstractions.Knowledge.VectorStorage;
+/// <summary>
+/// Результат масового наповнення бази знань з N документів
+/// </summary>
 public record BulkIngestionResult
 {
 	public double TotalProcessingTimeSeconds { get; init; } 
 	public int FullTotalTokenCount { get; init; }
 	public int FullInputTokenCount { get; init; }
-	public int ChunksCount => Ingestions.Select(x=>x.ChunksCount).Sum();
-	public int TotalDocuments => Ingestions.Count;
-	public int SuccessfulDocuments => Ingestions.Count(x=>x.IsSuccess);
-	public int FailedDocuments => Ingestions.Count(x=>!x.IsSuccess);
-	public ICollection<IngestionResult> Ingestions { get; init; } = new List<IngestionResult>();
+	public int ChunksCount => IngestionResults.Select(x=>x.ChunksCount).Sum();
+	public int TotalDocuments => IngestionResults.Count;
+	public int SuccessfulDocuments => IngestionResults.Count(x=>x.IsSuccess);
+	public int FailedDocuments => IngestionResults.Count(x=>!x.IsSuccess);
+	public ICollection<IngestionResult> IngestionResults { get; init; } = new List<IngestionResult>();
 	
-	public BulkIngestionResult(double totalProcessingTimeSeconds, ICollection<IngestionResult> ingestions)
+	public BulkIngestionResult(double totalProcessingTimeSeconds, ICollection<IngestionResult> ingestionResults)
 	{
 		TotalProcessingTimeSeconds = totalProcessingTimeSeconds;
-		Ingestions = ingestions;
-		FullInputTokenCount = ingestions.Select(x=>x.FullInputTokenCount).Sum();
-		FullTotalTokenCount = ingestions.Select(x=>x.FullTotalTokenCount).Sum();
+		IngestionResults = ingestionResults;
+		FullInputTokenCount = ingestionResults.Select(x=>x.FullInputTokenCount).Sum();
+		FullTotalTokenCount = ingestionResults.Select(x=>x.FullTotalTokenCount).Sum();
 	}
-	
-	public ICollection<IngestionResult> GetSuccessIngestions() => Ingestions.Where(x=>x.IsSuccess).ToList();
-	public ICollection<IngestionResult> GetFailIngestions() => Ingestions.Where(x=>!x.IsSuccess).ToList();
+	public ICollection<IngestionResult> GetSuccess() => IngestionResults.Where(x=>x.IsSuccess).ToList();
+	public ICollection<IngestionResult> GetFail() => IngestionResults.Where(x=>!x.IsSuccess).ToList();
 }
+/// <summary>
+/// Результат наповнення бази знань з одного документу 
+/// </summary>
 public record IngestionResult
 {
 	[Description("Загальний час виконання всієї операції (в секундах)")]
 	public required double TotalProcessingTimeSeconds { get; init;}
 	public bool IsSuccess { get; init; } = false;
 	public bool IsAlreadyExists { get; init; } = false;
-	public string FileName { get; init; } = string.Empty;
+	public string? FileName { get; set; }
 	public string DocumentTitle { get; init; } = string.Empty;
+	[Description("Опис документа")]
+	public string? DocumentDescription { get; set; }
+	public int TotalCharacters { get; init; }
+	public int TotalWords { get; init; }
 	public int ChunksCount { get; init; }
 	public string Message { get; init; } = string.Empty;
 	public int FullTotalTokenCount { get; init; }
@@ -118,7 +70,10 @@ public record IngestionResult
 			Message = "Success",
 			FileName = chunkResult.FileName,
 			DocumentTitle = chunkResult.DocumentTitle,
+			DocumentDescription = chunkResult.DocumentDescription,
 			ChunksCount = chunkResult.Chunks.Count,
+			TotalWords = chunkResult.TotalWords,
+			TotalCharacters = chunkResult.TotalCharacters,
 			TokenUsageDetails = tokenUsageDetails,
 			FullInputTokenCount = tokenUsageDetails.Select(x=>x.TokenUsageInfo.InputTokenCount).Sum(),
 			FullTotalTokenCount = tokenUsageDetails.Select(x=>x.TokenUsageInfo.TotalTokenCount).Sum()
@@ -138,8 +93,11 @@ public record IngestionResult
 			IsAlreadyExists = true,
 			Message = "Document already exists (skipped)",
 			FileName = doc.FileName,
+			DocumentDescription = doc.DocumentDescription,
 			DocumentTitle = doc.DocumentTitle,
-			ChunksCount = doc.Chunks.Count
+			ChunksCount = doc.Chunks.Count,
+			TotalCharacters = doc.TotalCharacters,
+			TotalWords = doc.TotalWords,
 		};
 	}
 };
