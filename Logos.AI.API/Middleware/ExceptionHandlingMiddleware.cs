@@ -39,13 +39,9 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         context.Response.StatusCode = (int)statusCode;
         //TODO if isRelease don't show stack trace and message (Security Risk)
 
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-            RespectNullableAnnotations = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
+        var jsonOptions = new JsonSerializerOptions();
+        Logos.AI.Engine.Extensions.LogosJsonExtensions.ConfigureLogosOptions(jsonOptions);
+
         var response = new ErrorResponse
         {
             Code = statusCode.ToString(),

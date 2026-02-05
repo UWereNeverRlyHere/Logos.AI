@@ -8,13 +8,45 @@ namespace Logos.AI.Engine.Extensions;
 public static class LogosJsonExtensions
 {
     // Кешуємо опції, щоб не створювати їх щоразу (Performance boost)
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = CreateDefaultOptions();
+    private static JsonSerializerOptions CreateDefaultOptions()
     {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
+        var options = new JsonSerializerOptions();
+        ConfigureLogosOptions(options);
+        return options;
+    }
+    /// <summary>
+    /// Централізоване налаштування JsonSerializerOptions для всього проекту.
+    /// </summary>
+    public static void ConfigureLogosOptions(JsonSerializerOptions options)
+    {
+        options.WriteIndented = true;
+        options.PropertyNameCaseInsensitive = true;
+        options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+        
+        // Додаємо підтримку Enum як рядків
+        options.Converters.Add(new JsonStringEnumConverter());
+        
+        // Додаємо кастомний конвертер для гнучкого читання рядків (числа -> рядки)
+        options.Converters.Add(new FlexibleStringConverter());
+
+        // Дозволяємо читати числа з лапок
+        options.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+
+        // Налаштування для роботи з коментарями та комами
+        options.ReadCommentHandling = JsonCommentHandling.Skip;
+        options.AllowTrailingCommas = true;
+
+        // Стратегія іменування camelCase
+        options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+
+        // Обробка циклічних посилань
+        options.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+
+        // Враховуємо анотації nullable
+        options.RespectNullableAnnotations = true;
+    }
     public static string SerializeToJson<T>(this T obj) => JsonSerializer.Serialize(obj, JsonOptions);
     
     public static T? DeserializeFromJson<T>(this string json)

@@ -1,3 +1,4 @@
+using Logos.AI.API.Configuration;
 using Logos.AI.API.Middleware;
 using Logos.AI.Engine.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews()
-    .AddNewtonsoftJson(); // Подключаем Newtonsoft.Json
+	.AddLogosJsonOptions();
+  //  .AddNewtonsoftJson(); // Подключаем Newtonsoft.Json
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -34,6 +36,7 @@ using (var scope = app.Services.CreateScope())
 {
 	var dbContext = scope.ServiceProvider.GetRequiredService<Logos.AI.Engine.Data.LogosDbContext>();
 	await dbContext.Database.MigrateAsync();
+	await dbContext.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
 	var qdrantService = scope.ServiceProvider.GetRequiredService<Logos.AI.Abstractions.Knowledge.Contracts.IVectorStorageService>();
 	await qdrantService.EnsureCollectionAsync();
 }

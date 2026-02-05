@@ -66,9 +66,9 @@ public record BulkIngestionResult
 	public int FullTotalTokenCount { get; init; }
 	public int FullInputTokenCount { get; init; }
 	public int ChunksCount => Ingestions.Select(x=>x.ChunksCount).Sum();
-	public int IngestionCount => Ingestions.Count;
-	public int IngestionSuccessCount => Ingestions.Count(x=>x.IsSuccess);
-	public int IngestionFailCount => Ingestions.Count(x=>!x.IsSuccess);
+	public int TotalDocuments => Ingestions.Count;
+	public int SuccessfulDocuments => Ingestions.Count(x=>x.IsSuccess);
+	public int FailedDocuments => Ingestions.Count(x=>!x.IsSuccess);
 	public ICollection<IngestionResult> Ingestions { get; init; } = new List<IngestionResult>();
 	
 	public BulkIngestionResult(double totalProcessingTimeSeconds, ICollection<IngestionResult> ingestions)

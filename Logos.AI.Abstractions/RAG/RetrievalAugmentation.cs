@@ -76,7 +76,9 @@ public record RetrievalResult
 
 public record EmbeddingResult
 {
+	[JsonIgnore]
 	public ICollection<float> Vector { get; set; } = new List<float>();
+	public long TotalVectors => Vector.Count;
 	public TokenUsageInfo EmbeddingTokensSpent { get; set; } = new();
 	public EmbeddingResult(ICollection<float> vector, int inputTokenCount, int totalTokenCount)
 	{

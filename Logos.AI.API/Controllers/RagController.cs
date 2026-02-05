@@ -5,7 +5,7 @@ using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Microsoft.AspNetCore.Mvc;
 namespace Logos.AI.API.Controllers;
-
+[ApiController]
 [Route("rag")]
 public class RagController(
 	IStorageService      storageService,
@@ -32,13 +32,14 @@ public class RagController(
 		// Повертаємо пустий список результатів, щоб View не ламалася
 		return View("Index", new List<KnowledgeChunk>());
 	}
-	[HttpPost("testVectorSearch")]
+	[HttpPost("testAugmentation")]
 	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeLlmRequest reqData)
 	{
+		if (!ModelState.IsValid) return BadRequest(ModelState);
 		var processedContext = await retrievalAugmentationService.AugmentAsync(reqData);
 		return Ok(processedContext);
 	}
-	[HttpPost("TestUpload")]
+	[HttpPost("testUpload")]
 	public async Task<IActionResult> TestUpload(List<IFormFile>? files, IFormFile? formFile, [FromForm] string? path)
 	{
 		var uploadDataList = new List<IngestionUploadData>();
@@ -217,7 +218,7 @@ public class RagController(
 				{
 					return Ok(new
 					{
-						message = $"Uploaded {results.IngestionCount} files from folder",
+						message = $"Uploaded {results.TotalDocuments} files from folder",
 						chunks = results.ChunksCount
 					});
 				}
