@@ -23,14 +23,16 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         context.Response.ContentType = "application/json";
         var statusCode = HttpStatusCode.InternalServerError;
         var message = exception.Message;
-        string code = null;
+        string? code = null;
         object? data = null;
+        var details = exception.StackTrace;
         switch (exception)
         {
             case LogosException logosException:
                 statusCode =logosException.HttpStatusCode;
                 data = logosException.Data;
                 code = logosException.Code;
+                details = null;
                 break;
             default:
                 logger.LogError(exception, "Unhandled exception occurred");
@@ -48,7 +50,7 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         {
             Code = code??statusCode.ToString(),
             Message = message,
-            Details = exception.StackTrace,
+            Details = details,
             Data = data
         };
         return context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));

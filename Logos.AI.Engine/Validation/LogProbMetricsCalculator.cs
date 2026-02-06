@@ -59,7 +59,7 @@ public static class LogProbMetricsCalculator
     {
         >= 0.85 => ConfidenceLevel.Certain, // Майже ідеал
         >= 0.65 => ConfidenceLevel.High,    // Дуже добре
-        >= 0.50 => ConfidenceLevel.Medium,  // Робочий варіант
+        >= 0.52 => ConfidenceLevel.Medium,  // Робочий варіант
         >= 0.30 => ConfidenceLevel.Low,     // Сумнівно
         _ => ConfidenceLevel.Uncertain      // Сміття
     };

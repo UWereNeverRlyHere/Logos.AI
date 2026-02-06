@@ -21,7 +21,7 @@ public record MedicalContextLlmResponse
 	public required string Reason { get; init; } = "empty";
 	[JsonPropertyName("queries")]
 	[Description("Список пошукових запитів для клінічних протоколів")]
-	public required List<string> Queries { get; init; } = new List<string>();
+	public required List<string> Queries { get; init; } = new();
 }
 
 /// <summary>

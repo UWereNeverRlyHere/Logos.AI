@@ -72,6 +72,18 @@ public record ConfidenceValidationResult
 	/// </summary>
 	[Description("Додаткові деталі або пояснення до результату.")]
 	public List<string> Details { get; init; } = new();
+	/// <summary>
+	/// Тип невпевненості: 'None', 'Focal' (точкова) чи 'Diffuse' (розмита)
+	/// </summary>
+	[Description("Тип невпевненості: 'None', 'Focal' (точкова) чи 'Diffuse' (розмита).")]
+	public string UncertaintyType { get; init; } = "None"; 
+	[Description("Пояснення до типу невпевненості.")]
+	public string UncertaintyReason { get; init; } = "None"; 
+	/// <summary>
+	/// Список найслабших токенів
+	/// </summary>
+	[Description("Список найслабших токенів.")]
+	public List<string> TopWeakestLinks { get; init; } = new();
 }
 
 /// <summary>
