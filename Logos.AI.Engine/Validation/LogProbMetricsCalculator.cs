@@ -57,10 +57,10 @@ public static class LogProbMetricsCalculator
     // 1. Оцінка Score (вже після штрафів)
     public static ConfidenceLevel GetLevel(double score) => score switch
     {
-        >= 0.88 => ConfidenceLevel.Certain, // Майже ідеал
-        >= 0.75 => ConfidenceLevel.High,    // Дуже добре
-        >= 0.55 => ConfidenceLevel.Medium,  // Робочий варіант
-        >= 0.35 => ConfidenceLevel.Low,     // Сумнівно
+        >= 0.85 => ConfidenceLevel.Certain, // Майже ідеал
+        >= 0.65 => ConfidenceLevel.High,    // Дуже добре
+        >= 0.50 => ConfidenceLevel.Medium,  // Робочий варіант
+        >= 0.30 => ConfidenceLevel.Low,     // Сумнівно
         _ => ConfidenceLevel.Uncertain      // Сміття
     };
 

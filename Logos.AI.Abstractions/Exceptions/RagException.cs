@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Abstractions.Validation;
 namespace Logos.AI.Abstractions.Exceptions;
@@ -26,6 +27,17 @@ public class RagException : LogosException
 
 	public static void ThrowForNotMedical(IReasoningResult reasoningResult) =>
 		throw new RagException("Medical context is not valid: Data is not medical.", reasoningResult);
-	public static void ThrowForConfidanceValidationFailed(ConfidenceValidationResult validationRes) =>
-		throw new RagException("Medical context confidence validation failed.", validationRes);
+	public static void ThrowForConfidenceValidationFailed(MedicalContextLlmResponse reasoningResult, ConfidenceValidationResult validationRes)
+	{
+		var obj = new
+		{
+			ReasoningResult = reasoningResult,
+			ValidationResult = validationRes
+		};
+		throw new RagException("Medical context confidence validation failed.", obj)
+		{
+			Code = "ConfidenceValidationFailed",
+			HttpStatusCode = HttpStatusCode.UnprocessableEntity
+		};
+	}
 }

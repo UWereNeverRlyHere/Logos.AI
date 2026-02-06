@@ -5,6 +5,7 @@ public abstract class LogosException : Exception
 {
 	public HttpStatusCode HttpStatusCode { get; init; } = HttpStatusCode.InternalServerError;
 	public object? Data { get; init; } = null;
+	public string? Code { get; init; } = null;
 	public LogosException(HttpStatusCode httpStatusCode, string message, Exception innerException) : base(message, innerException)
 	{
 		HttpStatusCode = httpStatusCode;

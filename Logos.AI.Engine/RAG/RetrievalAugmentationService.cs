@@ -41,7 +41,7 @@ public class RetrievalAugmentationService(
 		{
 			logger.LogWarning("Confidence validation failed (Score: {Score:F2}, Level: {Level}). Aborting augmentation", 
 				validationRes.Score, validationRes.ConfidenceLevel);
-			RagException.ThrowForConfidanceValidationFailed(validationRes);
+			RagException.ThrowForConfidenceValidationFailed(medicalContext.Data,validationRes);
 		}
 		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", validationRes.Score, validationRes.ConfidenceLevel);
 		// 3. Виконання пошуку в базі знань
@@ -94,7 +94,7 @@ public class RetrievalAugmentationService(
 			if (!validationRes.IsValid)
 			{
 				logger.LogWarning("Confidence validation failed for direct reasoning (Score: {Score:F2})", validationRes.Score);
-				RagException.ThrowForConfidanceValidationFailed(validationRes);
+				RagException.ThrowForConfidenceValidationFailed(medicalContext.Data,validationRes);
 			}
 			// 3. Пошук контексту
 			var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
