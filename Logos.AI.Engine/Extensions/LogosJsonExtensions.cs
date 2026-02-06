@@ -8,51 +8,50 @@ namespace Logos.AI.Engine.Extensions;
 public static class LogosJsonExtensions
 {
     // Кешуємо опції, щоб не створювати їх щоразу (Performance boost)
-    private static readonly JsonSerializerOptions JsonOptions = CreateDefaultOptions();
-    private static JsonSerializerOptions CreateDefaultOptions()
+    private static readonly JsonSerializerOptions IndentedOptions = CreateDefaultOptions();
+    // Для отправки в LLM (без отступов - экономия токенов)
+    public static readonly JsonSerializerOptions CompactOptions = CreateDefaultOptions(indented: false);
+    private static JsonSerializerOptions CreateDefaultOptions(bool indented = true)
     {
         var options = new JsonSerializerOptions();
-        ConfigureLogosOptions(options);
+        ConfigureLogosOptions(options, indented);
         return options;
     }
     /// <summary>
     /// Централізоване налаштування JsonSerializerOptions для всього проекту.
     /// </summary>
-    public static void ConfigureLogosOptions(JsonSerializerOptions options)
+    public static void ConfigureLogosOptions(JsonSerializerOptions options,bool indented = true)
     {
-        options.WriteIndented = true;
+        options.WriteIndented = indented;
         options.PropertyNameCaseInsensitive = true;
         options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         options.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
-        
         // Додаємо підтримку Enum як рядків
         options.Converters.Add(new JsonStringEnumConverter());
-        
         // Додаємо кастомний конвертер для гнучкого читання рядків (числа -> рядки)
         options.Converters.Add(new FlexibleStringConverter());
-
         // Дозволяємо читати числа з лапок
         options.NumberHandling = JsonNumberHandling.AllowReadingFromString;
-
         // Налаштування для роботи з коментарями та комами
         options.ReadCommentHandling = JsonCommentHandling.Skip;
         options.AllowTrailingCommas = true;
-
         // Стратегія іменування camelCase
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-
         // Обробка циклічних посилань
         options.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-
         // Враховуємо анотації nullable
         options.RespectNullableAnnotations = true;
     }
-    public static string SerializeToJson<T>(this T obj) => JsonSerializer.Serialize(obj, JsonOptions);
-    
+    public static string SerializeToJson<T>(this T obj, bool indent = true)
+    {
+        var options = indent ? IndentedOptions : CompactOptions;
+        return JsonSerializer.Serialize(obj, options);
+    }
+
     public static T? DeserializeFromJson<T>(this string json)
     {
         if (string.IsNullOrWhiteSpace(json)) return default;
-        return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        return JsonSerializer.Deserialize<T>(json, IndentedOptions);
     }
 
     public static BinaryData GetSchemaFromType<T>(bool indented = true)

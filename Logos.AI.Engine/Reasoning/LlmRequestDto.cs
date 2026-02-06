@@ -24,7 +24,7 @@ public record LlmRequestDto
 			else
 			{
 				// Если объект - сериализуем (тут твой экстеншн)
-				UserMessageJsonContent = value.SerializeToJson();
+				UserMessageJsonContent = value.SerializeToJson(false);
 			}
 		}
 	}

@@ -40,10 +40,10 @@ public class RetrievalAugmentationService(
 		if (!validationRes.IsValid)
 		{
 			logger.LogWarning("Confidence validation failed (Score: {Score:F2}, Level: {Level}). Aborting augmentation", 
-				validationRes.Score, validationRes.Level);
+				validationRes.Score, validationRes.ConfidenceLevel);
 			RagException.ThrowForConfidanceValidationFailed(validationRes);
 		}
-		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", validationRes.Score, validationRes.Level);
+		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", validationRes.Score, validationRes.ConfidenceLevel);
 		// 3. Виконання пошуку в базі знань
 		logger.LogDebug("Step 3: Executing core retrieval...");
 		var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
@@ -174,7 +174,7 @@ public class RetrievalAugmentationService(
                 // 7. Збереження результату оцінки з даними про впевненість
                 evaluations.Add(evalData with 
                 { 
-                    Reasoning = $"[Confidence: {confidence.Level}] {evalData.Reasoning}",
+                    Reasoning = $"[Confidence: {confidence.ConfidenceLevel}] {evalData.Reasoning}",
                     ConfidenceValidationResult = confidence
                 });
             }

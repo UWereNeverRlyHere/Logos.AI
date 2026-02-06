@@ -33,7 +33,7 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 				throw new InvalidOperationException("LLM returned invalid JSON structure.", ex);
 			}
 
-			if (data == null) throw new InvalidOperationException("Deserialized data is null.");
+			if (Equals(data, default(TResponse))) throw new InvalidOperationException("Deserialized data is null.");
 
 			var logProbs = new List<LogProbToken>();
 			//В ContentTokenLogProbabilities  находится логарифмическая вероятность того токена,
@@ -81,7 +81,7 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 		var messages = new List<ChatMessage>
 		{
 			new SystemChatMessage(File.ReadAllText(promptPath)),
-			new UserChatMessage(requestDto.UserMessageJsonContent.SerializeToJson())
+			new UserChatMessage(requestDto.UserMessageJsonContent)
 		};
 		return messages;
 	}
