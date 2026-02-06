@@ -17,8 +17,8 @@ public record RelevanceEvaluationResult
 	[Description("Коротке пояснення: чому обрано ці фрагменти або чому відхилено документ.")]
 	public required string Reasoning { get; init; }
 	
-	[Description("Швидка перевірка: чи є хоч щось корисне.")]
 	[JsonIgnore] 
+	[Description("Швидка перевірка: чи є хоч щось корисне.")]
 	public bool IsRelevant => RelevantChunkIds.Count > 0 && Score >= 0.5;
 	[JsonIgnore]
 	public ConfidenceValidationResult ConfidenceValidationResult { get; set; } = new();

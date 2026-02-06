@@ -36,6 +36,13 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 			if (data == null) throw new InvalidOperationException("Deserialized data is null.");
 
 			var logProbs = new List<LogProbToken>();
+			//В ContentTokenLogProbabilities  находится логарифмическая вероятность того токена,
+			//который модель уже выбрала и вставила в текст.
+			//Это прямой показатель: "Насколько модель уверена в том, что она написала".
+			
+			//TopLogProbabilities возвращает список альтернатив, которые модель рассматривала, но не выбрала (или выбрала, если это топ-1). Это полезно только для очень глубокой аналитики, например:
+			//Расчет энтропии (неопределенности): Если у выбранного токена вероятность 40%, а у второго места 39% — модель сильно колебалась.
+			//Self-Correction: Чтобы увидеть, не было ли среди альтернатив более "фактического" ответа.
 			if (completion.ContentTokenLogProbabilities != null)
 			{
 				logProbs = completion.ContentTokenLogProbabilities

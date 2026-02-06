@@ -12,7 +12,9 @@ public class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : IConfide
     // Якщо 0.0 - оцінка буде просто середнім арифметичним.
     // 0.4 - збалансований підхід.
     private const double WeakestLinkWeight = 0.4; 
-
+    private const double WeightAvg = 0.5;       // Основной вес на среднее качество
+    private const double WeightPerplexity = 0.3; // Вес на связность текста (ты его игнорировал)
+    private const double WeightMin = 0.2;       // Уменьшаем вес "слабого звена" с 0.4 до 0.2
     public Task<ConfidenceValidationResult> ValidateAsync(IReasoningResult reasoningResult)
     {
         var details = new List<string>();
@@ -71,8 +73,13 @@ public class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : IConfide
         // Score = (Avg * 0.6) + (Min * 0.4)
         // Це "карає" модель, якщо хоча б частина відповіді є галюцинацією.
         
-        double finalScore = (avgConfidence * (1 - WeakestLinkWeight)) + (minConfidence * WeakestLinkWeight);
-        
+       // double finalScore = (avgConfidence * (1 - WeakestLinkWeight)) + (minConfidence * WeakestLinkWeight);
+   
+
+       double finalScore = (avgConfidence * WeightAvg) + 
+           (perplexityScore * WeightPerplexity) + 
+           (minConfidence * WeightMin); 
+       
         // Додатковий штраф за високу перплексію (якщо модель пише "брєд")
         if (perplexity > 10.0)
         {

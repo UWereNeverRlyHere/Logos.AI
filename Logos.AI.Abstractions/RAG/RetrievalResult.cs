@@ -7,14 +7,18 @@ public record RetrievalResult
 {
 	[Description("Час виконання цього конкретного пошуку (в секундах)")]
 	public double DurationSeconds { get; init; }
+	
 	[Description("Текст запиту, за яким виконувався пошук")]
 	public string Query { get; init; } = string.Empty;
+	
 	[Description("Чанки, знайдені саме для цього запиту (сирі дані)")]
 	public EmbeddingResult Embedding { get; init; }
+	
 	[Description("Загальна кількість знайдених чанків для цього конкретного запиту")]
 	public int TotalChunksFound => FoundChunks.Count;
 	[Description("Знайдені чанки та їх оцінки релевантності для цього конкретного запиту")]
 	public ICollection<KnowledgeChunk> FoundChunks { get; init; } = new List<KnowledgeChunk>();
+	
 	[Description("Оцінки релевантності знайдених чанків для цього конкретного запиту")]
 	public ICollection<RelevanceEvaluationResult> RelevanceEvaluations { get; init; } = new List<RelevanceEvaluationResult>();
 	

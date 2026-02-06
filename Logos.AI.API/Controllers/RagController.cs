@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Abstractions.Knowledge.Retrieval;
