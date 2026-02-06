@@ -17,14 +17,13 @@ namespace Logos.AI.Engine.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.12");
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Document", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DocumentDescription")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DocumentTitle")
@@ -32,11 +31,6 @@ namespace Logos.AI.Engine.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<long>("FileSizeBytes")
@@ -45,8 +39,11 @@ namespace Logos.AI.Engine.Migrations
                     b.Property<bool>("IsProcessed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<byte[]>("RawFile")
-                        .HasColumnType("BLOB");
+                    b.Property<int>("TotalCharacters")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalWords")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("TEXT");
@@ -56,7 +53,7 @@ namespace Logos.AI.Engine.Migrations
                     b.ToTable("Documents");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.DocumentChunk", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.DocumentChunk", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -82,9 +79,26 @@ namespace Logos.AI.Engine.Migrations
                     b.ToTable("Chunks");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.DocumentChunk", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.DocumentContent", b =>
                 {
-                    b.HasOne("Logos.AI.Abstractions.Knowledge.Document", "Document")
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("FileExtension")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("DocumentId");
+
+                    b.ToTable("DocumentContents", (string)null);
+                });
+
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.DocumentChunk", b =>
+                {
+                    b.HasOne("Logos.AI.Abstractions.Knowledge.Entities.Document", "Document")
                         .WithMany("Chunks")
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -93,9 +107,22 @@ namespace Logos.AI.Engine.Migrations
                     b.Navigation("Document");
                 });
 
-            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Document", b =>
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.DocumentContent", b =>
+                {
+                    b.HasOne("Logos.AI.Abstractions.Knowledge.Entities.Document", "Document")
+                        .WithOne("Content")
+                        .HasForeignKey("Logos.AI.Abstractions.Knowledge.Entities.DocumentContent", "DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Document");
+                });
+
+            modelBuilder.Entity("Logos.AI.Abstractions.Knowledge.Entities.Document", b =>
                 {
                     b.Navigation("Chunks");
+
+                    b.Navigation("Content");
                 });
 #pragma warning restore 612, 618
         }

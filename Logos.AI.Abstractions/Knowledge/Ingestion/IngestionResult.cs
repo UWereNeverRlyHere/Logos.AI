@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge.Entities;
-namespace Logos.AI.Abstractions.Knowledge.VectorStorage;
+namespace Logos.AI.Abstractions.Knowledge.Ingestion;
 /// <summary>
 /// Результат масового наповнення бази знань з N документів
 /// </summary>
@@ -60,7 +60,7 @@ public record IngestionResult
 			TotalProcessingTimeSeconds = totalProcessingTimeSeconds
 		};
 	}
-	public static IngestionResult CreateSuccess(double totalProcessingTimeSeconds, SimpleDocumentChunk chunkResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
+	public static IngestionResult CreateSuccess(double totalProcessingTimeSeconds, DocumentChunkingResult chunkingResultResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
 	{
 		tokenUsageDetails = tokenUsageDetails.OrderBy(x=>x.ContentLength).ToList();
 		return new IngestionResult
@@ -68,21 +68,21 @@ public record IngestionResult
 			TotalProcessingTimeSeconds = totalProcessingTimeSeconds,
 			IsSuccess = true,
 			Message = "Success",
-			FileName = chunkResult.FileName,
-			DocumentTitle = chunkResult.DocumentTitle,
-			DocumentDescription = chunkResult.DocumentDescription,
-			ChunksCount = chunkResult.Chunks.Count,
-			TotalWords = chunkResult.TotalWords,
-			TotalCharacters = chunkResult.TotalCharacters,
+			FileName = chunkingResultResult.FileName,
+			DocumentTitle = chunkingResultResult.DocumentTitle,
+			DocumentDescription = chunkingResultResult.DocumentDescription,
+			ChunksCount = chunkingResultResult.Chunks.Count,
+			TotalWords = chunkingResultResult.TotalWords,
+			TotalCharacters = chunkingResultResult.TotalCharacters,
 			TokenUsageDetails = tokenUsageDetails,
 			FullInputTokenCount = tokenUsageDetails.Select(x=>x.TokenUsageInfo.InputTokenCount).Sum(),
 			FullTotalTokenCount = tokenUsageDetails.Select(x=>x.TokenUsageInfo.TotalTokenCount).Sum()
 		};
 	}
 	
-	public static IngestionResult CreateSuccess(Stopwatch stopwatch, SimpleDocumentChunk chunkResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
+	public static IngestionResult CreateSuccess(Stopwatch stopwatch, DocumentChunkingResult chunkingResultResult, ICollection<IngestionTokenUsageDetails> tokenUsageDetails)
 	{
-		return CreateSuccess(stopwatch.Elapsed.TotalSeconds, chunkResult, tokenUsageDetails);
+		return CreateSuccess(stopwatch.Elapsed.TotalSeconds, chunkingResultResult, tokenUsageDetails);
 	}
 	public static IngestionResult CreateExists(Stopwatch stopwatch, Document doc)
 	{

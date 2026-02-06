@@ -1,8 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge._Contracts;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge.Ingestion;
+using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Engine.RAG;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,11 +19,11 @@ public class IngestionService(
 	IServiceScopeFactory scopeFactory,
 	ILogger<IngestionService> logger) : IIngestionService
 {
-	public async Task<IngestionResult> IngestFileAsync(IngestionUploadData uploadData, CancellationToken ct = default)
+	public async Task<IngestionResult> IngestFileAsync(IngestionUploadDto uploadDto, CancellationToken ct = default)
 	{
 		var stopwatch = Stopwatch.StartNew();
-		var docId = uploadData.DocumentId;
-		logger.LogInformation("Starting ingestion for file: {FileName} (ID: {DocId})", uploadData.FileName, docId);
+		var docId = uploadDto.DocumentId;
+		logger.LogInformation("Starting ingestion for file: {FileName} (ID: {DocId})", uploadDto.FileName, docId);
 
 		// Перевіряємо, чи такий документ вже є в базі (за хешем контенту)
 		var existingDoc = await storageService.GetDocumentByIdAsync(docId, ct);
@@ -34,9 +35,9 @@ public class IngestionService(
 		}
 
 		// Розбиваємо PDF на чанки
-		if (!pdfService.TryChunkDocument(uploadData, out SimpleDocumentChunk simpleDocChunk, out var error))
+		if (!pdfService.TryChunkDocument(uploadDto, out DocumentChunkingResult simpleDocChunk, out var error))
 		{
-			logger.LogError("Failed to parse PDF {FileName}: {Error}", uploadData.FileName, error);
+			logger.LogError("Failed to parse PDF {FileName}: {Error}", uploadDto.FileName, error);
 			stopwatch.Stop();
 			return IngestionResult.CreateFail(stopwatch, $"Parsing failed: {error}");
 		}
@@ -53,7 +54,7 @@ public class IngestionService(
 
 		int count = 0;
 		var tokensRes = new List<IngestionTokenUsageDetails>();
-		var pointsToUpsert = new List<QdrantUpsertData>();
+		var pointsToUpsert = new List<VectorPointDto>();
 
 		foreach (var chunk in simpleDocChunk.Chunks)
 		{
@@ -70,7 +71,7 @@ public class IngestionService(
 				.SetIndexedAt(simpleDocChunk.IndexedAt)
 				.GetPayload();
 
-			pointsToUpsert.Add(new QdrantUpsertData()
+			pointsToUpsert.Add(new VectorPointDto()
 			{
 				PointId = pointId,
 				Vector = vector.ToArray(),
@@ -91,16 +92,16 @@ public class IngestionService(
 			await qdrantService.UpsertChunksAsync(pointsToUpsert, ct);
 			logger.LogDebug("Qdrant upsert completed");
 			// Зберігаємо метадані в SQL
-			await storageService.SaveDocumentAsync(uploadData, simpleDocChunk, ct);
+			await storageService.SaveDocumentAsync(uploadDto, simpleDocChunk, ct);
 			logger.LogDebug("Document metadata and chunks saved to SQL database");
 		}
 		stopwatch.Stop();
 		logger.LogInformation("Ingestion completed for {FileName} in {Elapsed}s. Total chunks: {Chunks}", 
-			uploadData.FileName, stopwatch.Elapsed.TotalSeconds, simpleDocChunk.Chunks.Count);
+			uploadDto.FileName, stopwatch.Elapsed.TotalSeconds, simpleDocChunk.Chunks.Count);
 		
 		return IngestionResult.CreateSuccess(stopwatch, simpleDocChunk, tokensRes);
 	}
-	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadData> uploadData, CancellationToken ct = default)
+	public async Task<BulkIngestionResult> IngestFilesAsync(ICollection<IngestionUploadDto> uploadData, CancellationToken ct = default)
 	{
 		logger.LogInformation("Starting bulk ingestion for {Count} files", uploadData.Count);
 		var stopwatch = Stopwatch.StartNew();

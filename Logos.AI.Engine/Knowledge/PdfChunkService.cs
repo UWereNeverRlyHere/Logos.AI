@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge._Contracts;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
@@ -29,13 +29,13 @@ public class PdfChunkService : IDocumentChunkService
 	}
 
 // Змінюємо сигнатуру методу: додаємо out string docTitle
-	public bool TryChunkDocument(IngestionUploadData uploadData, out SimpleDocumentChunk simpleDocumentChunk, out string error)
+	public bool TryChunkDocument(IngestionUploadDto uploadDto, out DocumentChunkingResult documentChunkingResult, out string error)
 	{
 		error = string.Empty; 
-		simpleDocumentChunk = new SimpleDocumentChunk(uploadData);
+		documentChunkingResult = new DocumentChunkingResult(uploadDto);
 		try
 		{
-			var rawPages = ExtractTextWithPages(uploadData.FileData);
+			var rawPages = ExtractTextWithPages(uploadDto.FileData);
 			if (rawPages.Count == 0)
 			{
 				error = "Could not extract text from PDF.";
@@ -43,12 +43,12 @@ public class PdfChunkService : IDocumentChunkService
 			}
 			foreach (var page in rawPages)
 			{
-				simpleDocumentChunk.TotalCharacters += page.Content.Length;
-				simpleDocumentChunk.TotalWords += CountWords(page.Content);
+				documentChunkingResult.TotalCharacters += page.Content.Length;
+				documentChunkingResult.TotalWords += CountWords(page.Content);
 			}
 		
-			simpleDocumentChunk.SetTitleIfNotEmpty(ExtractTitleFromFirstPage(rawPages[0].Content));
-			simpleDocumentChunk.AddChunks(ChunkTextWithPages(rawPages));
+			documentChunkingResult.SetTitleIfNotEmpty(ExtractTitleFromFirstPage(rawPages[0].Content));
+			documentChunkingResult.AddChunks(ChunkTextWithPages(rawPages));
 			return true;
 		}
 		catch (Exception ex)
@@ -83,9 +83,9 @@ public class PdfChunkService : IDocumentChunkService
 		return string.Empty;
 	}
 
-	private List<SimpleChunk> ExtractTextWithPages(byte[] file)
+	private List<TextFragment> ExtractTextWithPages(byte[] file)
 	{
-		var result = new List<SimpleChunk>();
+		var result = new List<TextFragment>();
 		try
 		{
 			using var document = PdfDocument.Open(file);
@@ -94,7 +94,7 @@ public class PdfChunkService : IDocumentChunkService
 				var text = ContentOrderTextExtractor.GetText(page);
 				if (!string.IsNullOrWhiteSpace(text))
 				{
-					result.Add(new SimpleChunk(page.Number, text));
+					result.Add(new TextFragment(page.Number, text));
 				}
 			}
 		}
@@ -109,9 +109,9 @@ public class PdfChunkService : IDocumentChunkService
 	/// Умная нарезка текста (Recursive Chunking) с сохранением страниц.
 	/// Старается не разрывать предложения.
 	/// </summary>
-	private List<SimpleChunk> ChunkTextWithPages(List<SimpleChunk> pages)
+	private List<TextFragment> ChunkTextWithPages(List<TextFragment> pages)
 	{
-		var result = new List<SimpleChunk>();
+		var result = new List<TextFragment>();
 
 		foreach (var page in pages)
 		{
@@ -134,7 +134,7 @@ public class PdfChunkService : IDocumentChunkService
 				if (currentWordCount + sentenceWordCount > _chunkSizeWords && currentWordCount > 0)
 				{
 					// 1. Сохраняем текущий чанк
-					result.Add(new SimpleChunk(page.PageNumber, currentChunk.ToString().Trim()));
+					result.Add(new TextFragment(page.PageNumber, currentChunk.ToString().Trim()));
 
 					// 2. Начинаем новый чанк
 					currentChunk.Clear();
@@ -169,7 +169,7 @@ public class PdfChunkService : IDocumentChunkService
 			// Добавляем остаток (последний чанк на странице)
 			if (currentChunk.Length > 0)
 			{
-				result.Add(new SimpleChunk(page.PageNumber, currentChunk.ToString().Trim()));
+				result.Add(new TextFragment(page.PageNumber, currentChunk.ToString().Trim()));
 			}
 		}
 

@@ -2,7 +2,7 @@
 using System.Text;
 using Google.Protobuf.Collections;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Qdrant.Client.Grpc;
 namespace Logos.AI.Engine.Knowledge.Qdrant;
 public static class QdrantMapper

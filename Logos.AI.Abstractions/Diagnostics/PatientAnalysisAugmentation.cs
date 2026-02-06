@@ -1,5 +1,5 @@
 ﻿using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.RAG;
 namespace Logos.AI.Abstractions.Diagnostics;
 

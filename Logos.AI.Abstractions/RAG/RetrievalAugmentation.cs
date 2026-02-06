@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.Validation;
 namespace Logos.AI.Abstractions.RAG;
 

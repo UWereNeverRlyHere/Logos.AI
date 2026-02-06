@@ -1,7 +1,7 @@
 ﻿using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge._Contracts;
+using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.Knowledge.Entities;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Engine.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,22 +25,22 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 	/// Зберігає документ та його фрагменти в базу.
 	/// </summary>
 	public async Task<Guid> SaveDocumentAsync(
-		IngestionUploadData uploadData,
-		SimpleDocumentChunk simpleDocumentChunk,
+		IngestionUploadDto uploadDto,
+		DocumentChunkingResult documentChunkingResult,
 		CancellationToken   ct = default)
 	{
 		// 1. Перевірка дублікатів
 		var existing = await dbContext.Documents
-			.FirstOrDefaultAsync(d => d.Id == simpleDocumentChunk.DocumentId, ct);
+			.FirstOrDefaultAsync(d => d.Id == documentChunkingResult.DocumentId, ct);
 		if (existing != null)
 		{
 			logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save", existing.Id);
 			return existing.Id;
 		}
 		// 2. Створення документа
-		var document = Document.CreateFromSimpleDocumentChunk(uploadData, simpleDocumentChunk);
+		var document = Document.CreateFromSimpleDocumentChunk(uploadDto, documentChunkingResult);
 		// 3. Мапінг чанків з правильними сторінками
-		var chunksEntities = simpleDocumentChunk.Chunks.Select(c => new DocumentChunk
+		var chunksEntities = documentChunkingResult.Chunks.Select(c => new DocumentChunk
 		{
 			Id = Guid.NewGuid(),
 			DocumentId = document.Id,
@@ -53,7 +53,7 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 		dbContext.Documents.Add(document);
 		await dbContext.SaveChangesAsync(ct);
 
-		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", simpleDocumentChunk.FileName, chunksEntities.Count);
+		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", documentChunkingResult.FileName, chunksEntities.Count);
 		return document.Id;
 	}
 

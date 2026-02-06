@@ -1,7 +1,8 @@
 ﻿using System.Text;
 using Logos.AI.Abstractions.Knowledge;
-using Logos.AI.Abstractions.Knowledge._Contracts;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Contracts;
+using Logos.AI.Abstractions.Knowledge.Ingestion;
+using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Microsoft.AspNetCore.Mvc;
@@ -43,7 +44,7 @@ public class RagController(
 	[HttpPost("testUpload")]
 	public async Task<IActionResult> TestUpload(List<IFormFile>? files, IFormFile? formFile, [FromForm] string? path)
 	{
-		var uploadDataList = new List<IngestionUploadData>();
+		var uploadDataList = new List<IngestionUploadDto>();
 		var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 		if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
@@ -55,12 +56,12 @@ public class RagController(
 				var dirFiles = Directory.GetFiles(path, "*.pdf", SearchOption.AllDirectories);
 				foreach (var f in dirFiles)
 				{
-					uploadDataList.Add(new IngestionUploadData(f));
+					uploadDataList.Add(new IngestionUploadDto(f));
 				}
 			}
 			else if (System.IO.File.Exists(path) && Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
 			{
-				uploadDataList.Add(new IngestionUploadData(path));
+				uploadDataList.Add(new IngestionUploadDto(path));
 			}
 		}
 
@@ -81,7 +82,7 @@ public class RagController(
 			{
 				await file.CopyToAsync(fs);
 			}
-			uploadDataList.Add(new IngestionUploadData(filePath));
+			uploadDataList.Add(new IngestionUploadDto(filePath));
 		}
 
 		if (uploadDataList.Count == 0)
@@ -194,21 +195,15 @@ public class RagController(
 		try
 		{
 			// 1. Зберігаємо файли фізично
-			var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-			if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-			var uploadDataList = new List<IngestionUploadData>();
+			var uploadDataList = new List<IngestionUploadDto>();
 			foreach (var file in pdfFiles)
 			{
 				// Генеруємо унікальне ім'я файлу
-				var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
-				var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-				await using (var fs = new FileStream(filePath, FileMode.Create))
-				{
-					await file.CopyToAsync(fs);
-				}
-				uploadDataList.Add(new IngestionUploadData(filePath));
+				using var ms = new MemoryStream();
+				await file.CopyToAsync(ms);
+				var fileBytes = ms.ToArray();
+				// Используем основной конструктор
+				uploadDataList.Add(new IngestionUploadDto(fileBytes, file.FileName));
 			}
 
 			if (uploadMode == "folder")
@@ -226,19 +221,16 @@ public class RagController(
 				
 				return BadRequest(string.Join("; ", results.GetFail().Select(r => r.Message)));
 			}
-			else
-			{
-				// Випадок одного файлу (або якщо вибрано режим file, беремо перший PDF)
-				var res = await ingestionService.IngestFileAsync(uploadDataList[0]);
+			// Випадок одного файлу (або якщо вибрано режим file, беремо перший PDF)
+			var res = await ingestionService.IngestFileAsync(uploadDataList[0]);
 
-				if (res.IsSuccess)
-					return Ok(new
-					{
-						message = $"Uploaded {pdfFiles[0].FileName}",
-						chunks = res.ChunksCount
-					});
-				return BadRequest(res.Message);
-			}
+			if (res.IsSuccess)
+				return Ok(new
+				{
+					message = $"Uploaded {pdfFiles[0].FileName}",
+					chunks = res.ChunksCount
+				});
+			return BadRequest(res.Message);
 		}
 		catch (Exception ex)
 		{

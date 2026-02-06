@@ -1,11 +1,13 @@
-﻿using Logos.AI.Abstractions.Common;
+﻿using System.ComponentModel;
+using Logos.AI.Abstractions.Common;
 // ReSharper disable MemberCanBePrivate.Global
-namespace Logos.AI.Abstractions.Knowledge.VectorStorage;
+namespace Logos.AI.Abstractions.Knowledge.Ingestion;
 
 /// <summary>
 /// Представляє дані, що використовуються для завантаження файлів у систему індексації.
 /// </summary>
-public record IngestionUploadData
+[Description("Дані для завантаження файлів у систему індексації")]
+public record IngestionUploadDto
 {
 	private readonly byte[] _fileData = [];
 	public Guid DocumentId { get; private set; }
@@ -23,11 +25,11 @@ public record IngestionUploadData
 			FileExtension = FileSignatureUtils.GetExtensionFromBytes(_fileData);
 		}
 	}
-	public IngestionUploadData(string path) : this(File.ReadAllBytes(path), Path.GetFileName(path))
+	public IngestionUploadDto(string path) : this(File.ReadAllBytes(path), Path.GetFileName(path))
 	{
 		
 	}
-	public IngestionUploadData(byte[] fileData, string fileName)
+	public IngestionUploadDto(byte[] fileData, string fileName)
 	{
 		try
 		{
@@ -40,20 +42,20 @@ public record IngestionUploadData
 			throw;
 		}
 	}
-	public IngestionUploadData(string base64Content, string fileName) : this(Convert.FromBase64String(base64Content), fileName)
+	public IngestionUploadDto(string base64Content, string fileName) : this(Convert.FromBase64String(base64Content), fileName)
 	{
 	}
-	public IngestionUploadData SetDescription(string description)
+	public IngestionUploadDto SetDescription(string description)
 	{
 		Description = description;
 		return this;
 	}
-	public IngestionUploadData SetTitle(string title)
+	public IngestionUploadDto SetTitle(string title)
 	{
 		Title = title;
 		return this;
 	}
-	public IngestionUploadData SetFileName(string fileName)
+	public IngestionUploadDto SetFileName(string fileName)
 	{
 		FileName = fileName;
 		return this;

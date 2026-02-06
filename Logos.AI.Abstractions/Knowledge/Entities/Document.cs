@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
+using Logos.AI.Abstractions.Knowledge.Ingestion;
 namespace Logos.AI.Abstractions.Knowledge.Entities;
 [Description("Представлення документа")]
 public sealed class Document
@@ -30,20 +30,20 @@ public sealed class Document
 	{
 		Content = new DocumentContent(Id, data, extension);
 	}
-	public static Document CreateFromSimpleDocumentChunk(IngestionUploadData uploadData, SimpleDocumentChunk simpleDocumentChunk)
+	public static Document CreateFromSimpleDocumentChunk(IngestionUploadDto uploadDto, DocumentChunkingResult documentChunkingResult)
 	{
 		return new Document
 		{
-			Id = simpleDocumentChunk.DocumentId,
-			FileName = simpleDocumentChunk.FileName,
-			DocumentTitle = simpleDocumentChunk.DocumentTitle,
-			DocumentDescription = simpleDocumentChunk.DocumentDescription,
-			FileSizeBytes = uploadData.FileData.Length,
-			TotalCharacters = simpleDocumentChunk.TotalCharacters,
-			TotalWords = simpleDocumentChunk.TotalWords,
-			UploadedAt = simpleDocumentChunk.IndexedAt,
+			Id = documentChunkingResult.DocumentId,
+			FileName = documentChunkingResult.FileName,
+			DocumentTitle = documentChunkingResult.DocumentTitle,
+			DocumentDescription = documentChunkingResult.DocumentDescription,
+			FileSizeBytes = uploadDto.FileData.Length,
+			TotalCharacters = documentChunkingResult.TotalCharacters,
+			TotalWords = documentChunkingResult.TotalWords,
+			UploadedAt = documentChunkingResult.IndexedAt,
 			IsProcessed = true,
-			Content = new DocumentContent(simpleDocumentChunk.DocumentId, uploadData.FileData, uploadData.FileExtension)
+			Content = new DocumentContent(documentChunkingResult.DocumentId, uploadDto.FileData, uploadDto.FileExtension)
 		};
 	}
 }

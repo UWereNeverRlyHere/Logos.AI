@@ -1,8 +1,13 @@
-﻿using Logos.AI.Abstractions.Knowledge.VectorStorage;
-namespace Logos.AI.Abstractions.Knowledge._Contracts;
+﻿using Logos.AI.Abstractions.Knowledge.Retrieval;
+namespace Logos.AI.Abstractions.Knowledge.Contracts;
 
 public interface IVectorStorageService
 {
+	/// <summary>
+	/// Полностью удаляет и пересоздает коллекцию.
+	/// ВНИМАНИЕ: Все данные будут потеряны.
+	/// </summary>
+	Task RecreateCollectionAsync(CancellationToken ct = default);
 	/// <summary>
 	/// Перевіряє існування колекції у векторній базі даних та створює її, якщо вона відсутня.
 	/// </summary>
@@ -11,7 +16,7 @@ public interface IVectorStorageService
 	/// <summary>
 	/// Завантажує список точок (чанків) у векторну базу даних пакетним запитом.
 	/// </summary>
-	Task UpsertChunksAsync(IEnumerable<QdrantUpsertData> points, CancellationToken ct = default);
+	Task UpsertChunksAsync(IEnumerable<VectorPointDto> points, CancellationToken ct = default);
 
 	/// <summary>
 	/// Виконує семантичний пошук схожих фрагментів знань за вектором.

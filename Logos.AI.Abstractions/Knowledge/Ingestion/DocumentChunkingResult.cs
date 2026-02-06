@@ -1,12 +1,9 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Logos.AI.Abstractions.Knowledge.VectorStorage;
-namespace Logos.AI.Abstractions.Knowledge;
+namespace Logos.AI.Abstractions.Knowledge.Ingestion;
 
-/// <summary>
-/// Запис для проміжного результату після, розбиття документу на чанки
-/// </summary>
-public record SimpleDocumentChunk
+[Description("Запис для проміжного результату після, розбиття документу на чанки")]
+public record DocumentChunkingResult
 {
 	[Description("Ідентифікатор документа. Вираховується з хешу файлу")]
 	public Guid DocumentId { get; private init; }
@@ -24,15 +21,15 @@ public record SimpleDocumentChunk
 	[Description("Загальна кількість слів в документі")]
 	public int TotalWords { get; set; } 
 	[Description("Фрагменти документа (чанки)")]
-	public List<SimpleChunk> Chunks { get; init; } = new();
-	public SimpleDocumentChunk(IngestionUploadData data)
+	public List<TextFragment> Chunks { get; init; } = new();
+	public DocumentChunkingResult(IngestionUploadDto dto)
 	{
-		DocumentId = data.DocumentId;
-		FileName = data.FileName;
-		DocumentTitle = data.Title;
-		DocumentDescription = data.Description;
+		DocumentId = dto.DocumentId;
+		FileName = dto.FileName;
+		DocumentTitle = dto.Title;
+		DocumentDescription = dto.Description;
 	}
-	public SimpleDocumentChunk(string fileName)
+	public DocumentChunkingResult(string fileName)
 	{
 		FileName = fileName;
 		DocumentTitle = fileName;
@@ -42,24 +39,18 @@ public record SimpleDocumentChunk
 		if (!string.IsNullOrWhiteSpace(DocumentTitle)) return;
 		if (!string.IsNullOrWhiteSpace(title)) DocumentTitle = title;
 	}
-	public void AddChunks(List<SimpleChunk> chunks)
+	public void AddChunks(List<TextFragment> chunks)
 	{
 		Chunks.AddRange(chunks);
 	}
 };
-public record SimpleChunk
+public record TextFragment
 {
-	/// <summary>
-	/// Номер сторінки, на якій знаходиться цей фрагмент тексту.
-	/// </summary>
-	[Description("Номер сторінки")]
+	[Description("Номер сторінки, на якій знаходиться фрагмент тексту")]
 	public int PageNumber { get; init; }
-	/// <summary>
-	/// Текстовий вміст фрагмента.
-	/// </summary>
-	[Description("Зміст фрагмента")]
+	[Description("Текстовий вміст фрагмента")]
 	public string Content { get; init; } = string.Empty;
-	public SimpleChunk(int pageNumber, string content)
+	public TextFragment(int pageNumber, string content)
 	{
 		PageNumber = pageNumber;
 		Content = content;
