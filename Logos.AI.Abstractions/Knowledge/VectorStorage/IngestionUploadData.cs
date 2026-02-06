@@ -23,18 +23,9 @@ public record IngestionUploadData
 			FileExtension = FileSignatureUtils.GetExtensionFromBytes(_fileData);
 		}
 	}
-	public IngestionUploadData(Path filePath)
+	public IngestionUploadData(string path) : this(File.ReadAllBytes(path), Path.GetFileName(path))
 	{
-		try
-		{
-			FileData = fileData;
-			FileName = fileName;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw;
-		}
+		
 	}
 	public IngestionUploadData(byte[] fileData, string fileName)
 	{
