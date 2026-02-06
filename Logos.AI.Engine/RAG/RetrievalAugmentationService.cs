@@ -43,8 +43,7 @@ public class RetrievalAugmentationService(
 				validationRes.Score, validationRes.Level);
 			RagException.ThrowForConfidanceValidationFailed(validationRes);
 		}
-		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", 
-			validationRes.Score, validationRes.Level);
+		logger.LogInformation("Confidence validation passed (Score: {Score:F2}, Level: {Level})", validationRes.Score, validationRes.Level);
 		// 3. Виконання пошуку в базі знань
 		logger.LogDebug("Step 3: Executing core retrieval...");
 		var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
@@ -202,37 +201,53 @@ public class RetrievalAugmentationService(
 
 	public async Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
 	{
+		if (queries.Count == 0)
+			return Array.Empty<RetrievalResult>();
+
+		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
+		
+		var queryList = queries.ToList();
+		
+		// 1. Векторизація всіх запитів одночасно (Embedding)
+		logger.LogDebug("Generating embeddings for {Count} queries in bulk", queryList.Count);
+		var embeddingStopwatch = Stopwatch.StartNew();
+		var embeddings = await embeddingService.GetEmbeddingsAsync(queryList, ct);
+		embeddingStopwatch.Stop();
+		logger.LogInformation("Generated {Count} embeddings in {Time:F2}s", embeddings.Count, embeddingStopwatch.Elapsed.TotalSeconds);
+
 		// Потокобезпечна колекція для збору результатів пошуку
 		var searchResults = new ConcurrentBag<RetrievalResult>();
-		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно)
+		
+		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно для пошуку)
 		var parallelOptions = new ParallelOptions
 		{
 			MaxDegreeOfParallelism = 5,
 			CancellationToken = ct
 		};
 
-		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
-		// Перевірка наявності колекції у векторній БД
-		await Parallel.ForEachAsync(queries, parallelOptions, async (query, token) =>
+		// 2. Пошук схожих фрагментів у векторній БД Qdrant для кожного запиту
+		await Parallel.ForEachAsync(Enumerable.Range(0, queryList.Count), parallelOptions, async (index, token) =>
 		{
-			// Таймер для вимірювання часу обробки конкретного підзапиту
+			var query = queryList[index];
+			var embedResult = embeddings[index];
+			
 			var stepStopwatch = Stopwatch.StartNew();
 			try
 			{
 				logger.LogDebug("Processing query: '{Query}'", query);
-				// 1. Векторизація тексту запиту (Embedding)
-				logger.LogDebug("Generating embedding for query: '{Query}'", query);
-				//TODO переделать на параллельный поиск
-				var embedResult = await embeddingService.GetEmbeddingAsync(query, token);
-				logger.LogInformation("Embedding generated for '{Query}'. Tokens: {Tokens}", 
+				
+				// Логування інформації про отриманий ембеддінг (збережено для сумісності з попередніми логами)
+				logger.LogInformation("Embedding for '{Query}' retrieved from bulk result. Tokens: {Tokens}", 
 					query, embedResult.EmbeddingTokensSpent.TotalTokenCount);
-				// 2. Пошук схожих фрагментів у векторній БД Qdrant
+
+				// Пошук у Qdrant
 				logger.LogDebug("Searching Qdrant for query: '{Query}'", query);
 				var chunks = await qdrantService.SearchAsync(embedResult.Vector.ToArray(), token);
 				stepStopwatch.Stop();
+				
 				logger.LogInformation("Search for '{Query}' completed. Chunks found: {Count}. Time: {Time:F2}s", 
 					query, chunks.Count, stepStopwatch.Elapsed.TotalSeconds);
-				// 3. Збереження результатів пошуку для даного запиту
+				
 				var retrievalResult = new RetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
 				searchResults.Add(retrievalResult);
 			}
