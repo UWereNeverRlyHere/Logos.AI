@@ -1,12 +1,19 @@
 ﻿using Logos.AI.Abstractions.Validation;
 namespace Logos.AI.Engine.Validation;
 
+/// <summary>
+/// Калькулятор метрик впевненості на основі логарифмічних ймовірностей токенів (logprobs).
+/// </summary>
 public static class LogProbMetricsCalculator
 {
 	private const double Alpha = 0.65;
 
-	public static LogProbMetrics Calculate(
-		IReadOnlyList<(string Token, double LogProb)> tokens)
+	/// <summary>
+	/// Розраховує набір статистичних метрик для оцінки впевненості моделі.
+	/// </summary>
+	/// <param name="tokens">Список токенів та їх логарифмічних ймовірностей.</param>
+	/// <returns>Об'єкт з розрахованими метриками.</returns>
+	public static LogProbMetrics Calculate(IReadOnlyList<(string Token, double LogProb)> tokens)
 	{
 		if (tokens.Count == 0)
 			return LogProbMetrics.Empty;
@@ -26,12 +33,7 @@ public static class LogProbMetricsCalculator
 		double perplexity = Math.Exp(-avgLogProb);
 
 		// 3. Token entropy
-		double entropy = 0.0;
-		foreach (var p in probs)
-		{
-			if (p > 0)
-				entropy += -p * Math.Log(p);
-		}
+		double entropy = probs.Where(p => p > 0).Sum(p => -p * Math.Log(p));
 		entropy /= n;
 
 		// 4. Weakest link
@@ -52,46 +54,60 @@ public static class LogProbMetricsCalculator
 			lengthPenalty
 		);
 	}
-	public static ConfidenceLevel GetFinalLevel(double finalScore, LogProbMetrics m)
-	{
-		if (finalScore >= 0.85 && m.Perplexity < 1.3 && m.Entropy < 0.3 && m.WeakestTokenProbability > 0.4)
-		{
-			return ConfidenceLevel.Certain;
-		}
+    // 1. Оцінка Score (вже після штрафів)
+    public static ConfidenceLevel GetLevel(double score) => score switch
+    {
+        >= 0.88 => ConfidenceLevel.Certain, // Майже ідеал
+        >= 0.75 => ConfidenceLevel.High,    // Дуже добре
+        >= 0.55 => ConfidenceLevel.Medium,  // Робочий варіант
+        >= 0.35 => ConfidenceLevel.Low,     // Сумнівно
+        _ => ConfidenceLevel.Uncertain      // Сміття
+    };
 
-		if (finalScore >= 0.7)
-			return ConfidenceLevel.High;
+    // 2. Оцінка Перплексії (чим менше, тим краще)
+    // 1.0 - ідеал (модель точно знала кожне слово)
+    public static ConfidenceLevel GetPerplexityLevel(double ppl) => ppl switch
+    {
+        < 1.5 => ConfidenceLevel.Certain, // Текст дуже передбачуваний і чіткий
+        < 3.0 => ConfidenceLevel.High,    
+        < 6.0 => ConfidenceLevel.Medium,  // Трохи "творчий" або складний текст
+        < 15.0 => ConfidenceLevel.Low,    // Модель плуталася
+        _ => ConfidenceLevel.Uncertain
+    };
 
-		if (finalScore >= 0.55)
-			return ConfidenceLevel.Medium;
+    // 3. Оцінка Ентропії (чим менше, тим краще)
+    // 0 - повна детермінованість
+    public static ConfidenceLevel GetEntropyLevel(double entropy) => entropy switch
+    {
+        < 0.2 => ConfidenceLevel.Certain, // Модель не вагалася між варіантами
+        < 0.6 => ConfidenceLevel.High,
+        < 1.2 => ConfidenceLevel.Medium,
+        < 2.0 => ConfidenceLevel.Low,
+        _ => ConfidenceLevel.Uncertain
+    };
 
-		if (finalScore >= 0.4)
-			return ConfidenceLevel.Low;
+    // 4. Фінальний рівень (Агрегація)
+    // Тут ми діємо консервативно: якщо хоч один показник критичний - знижуємо оцінку.
+    public static ConfidenceLevel GetFinalLevel(double finalScore, LogProbMetrics m)
+    {
+        var scoreLevel = GetLevel(finalScore);
+        
+        // Якщо Score високий, але Перплексія або Ентропія жахливі -> це прихована галюцинація
+        if (m.Perplexity > 10.0 || m.Entropy > 2.0)
+        {
+            // Навіть якщо Score був High, ми його обвалюємо до Low
+            return ConfidenceLevel.Low; 
+        }
 
-		return ConfidenceLevel.Uncertain;
-	}
-	public static ConfidenceLevel GetLevel(double score) => score switch
-	{
-		>= 0.85 => ConfidenceLevel.Certain,
-		>= 0.7 => ConfidenceLevel.High,
-		>= 0.55 => ConfidenceLevel.Medium,
-		>= 0.4 => ConfidenceLevel.Low,
-		_ => ConfidenceLevel.Uncertain
-	};
+        // Щоб отримати Certain, все має бути ідеальним
+        if (scoreLevel == ConfidenceLevel.Certain)
+        {
+            if (m.Perplexity > 2.0 || m.Entropy > 0.4 || m.WeakestTokenProbability < 0.2)
+            {
+                return ConfidenceLevel.High; // Downgrade to High
+            }
+        }
 
-	public static ConfidenceLevel GetPerplexityLevel(double ppl) => ppl switch
-	{
-		< 1.5 => ConfidenceLevel.High,
-		< 3.0 => ConfidenceLevel.Medium,
-		< 5.0 => ConfidenceLevel.Low,
-		_ => ConfidenceLevel.Uncertain
-	};
-
-	public static ConfidenceLevel GetEntropyLevel(double entropy) => entropy switch
-	{
-		< 0.5 => ConfidenceLevel.High,
-		< 1.0 => ConfidenceLevel.Medium,
-		< 1.5 => ConfidenceLevel.Low,
-		_ => ConfidenceLevel.Uncertain
-	};
+        return scoreLevel;
+    }
 }

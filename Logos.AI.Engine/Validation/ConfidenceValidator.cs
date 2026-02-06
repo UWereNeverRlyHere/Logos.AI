@@ -4,10 +4,17 @@ using Logos.AI.Abstractions.Validation.Contracts;
 using Microsoft.Extensions.Logging;
 namespace Logos.AI.Engine.Validation;
 
+/// <summary>
+/// Валідатор впевненості, який використовує статистичні метрики логарифмічних ймовірностей токенів.
+/// </summary>
 public sealed class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : IConfidenceValidator
 {
-    public Task<ConfidenceValidationResult> ValidateAsync(
-        IReasoningResult reasoningResult)
+    /// <summary>
+    /// Проводить аналіз впевненості результату міркування.
+    /// </summary>
+    /// <param name="reasoningResult">Результат міркування моделі, що містить logprobs.</param>
+    /// <returns>Результат валідації з фінальним балом та детальними метриками.</returns>
+    public Task<ConfidenceValidationResult> ValidateAsync(IReasoningResult reasoningResult)
     {
         var tokens = reasoningResult.LogProbs;
 
@@ -78,6 +85,12 @@ public sealed class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : I
                     LogProbMetricsCalculator.GetPerplexityLevel(
                         m.Perplexity)
             },
+            Entropy = new MetricItem
+            {
+                Value = m.Entropy,
+                Description = m.Entropy.ToString("F2"),
+                Rating = LogProbMetricsCalculator.GetEntropyLevel(m.Entropy) 
+            },
             WuScore = new MetricItem
             {
                 Value = m.LengthPenalty,
@@ -89,14 +102,9 @@ public sealed class ConfidenceValidator(ILogger<ConfidenceValidator> logger) : I
         return Task.FromResult(new ConfidenceValidationResult
         {
             Score = finalScore,
-            IsValid =
-                finalScore >= 0.5 &&
-                metrics.Perplexity.Rating != ConfidenceLevel.Uncertain,
-
+            IsValid = finalScore >= 0.5 && metrics.Perplexity.Rating != ConfidenceLevel.Uncertain,
             ConfidenceLevel = LogProbMetricsCalculator.GetFinalLevel(finalScore,m),
-
             Metrics = metrics,
-
             Details =
             [
                 $"Average Token Confidence: {m.IntrinsicConfidence:P1}",
