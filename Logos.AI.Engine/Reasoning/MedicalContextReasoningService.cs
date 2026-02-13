@@ -47,15 +47,15 @@ public class MedicalContextReasoningService(
 		return await AnalyzeAsync(request.SerializeToJson(), ct);
 	}
 
-	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(ExtendedRetrievalResult extendedRetrievalResult, CancellationToken ct = default)
+	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default)
 	{
 		try
 		{
 			// Формуємо легкий payload, щоб не ганяти весь JSON пацієнта
 			var evaluationPayload = new
 			{
-				UserQuery = extendedRetrievalResult.Query,
-				FoundChunks = extendedRetrievalResult.FoundChunks
+				UserQuery = retrievalResult.Query,
+				FoundChunks = retrievalResult.FoundChunks
 			};
 
 			var reqData = new LlmRequestDto

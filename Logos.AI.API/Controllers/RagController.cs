@@ -4,13 +4,14 @@ using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
+using Logos.AI.Engine.RAG;
 using Microsoft.AspNetCore.Mvc;
 namespace Logos.AI.API.Controllers;
 [ApiController]
 [Route("rag")]
 public class RagController(
 	IStorageService      storageService,
-	IVectorStorageService qdrantService,
+	RagOrchestrator       orchestrator,
 	IRetrievalAugmentationService retrievalAugmentationService,
 	IIngestionService             ingestionService) : Controller
 {
@@ -34,10 +35,18 @@ public class RagController(
 		return View("Index", new List<KnowledgeChunk>());
 	}
 	[HttpPost("testAugmentation")]
-	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeRagRequest reqData)
+	public async Task<IActionResult> TestAugmentation([FromBody] PatientAnalyzeRagRequest reqData)
 	{
 		if (!ModelState.IsValid) return BadRequest(ModelState);
 		var processedContext = await retrievalAugmentationService.AugmentAsync(reqData);
+		return Ok(processedContext);
+	}
+	
+	[HttpPost("testGeneration")]
+	public async Task<IActionResult> TestGeneration([FromBody] PatientAnalyzeRagRequest reqData)
+	{
+		if (!ModelState.IsValid) return BadRequest(ModelState);
+		var processedContext = await orchestrator.GenerateResponseAsync(reqData);
 		return Ok(processedContext);
 	}
 	[HttpPost("testUpload")]

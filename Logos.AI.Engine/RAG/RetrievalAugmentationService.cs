@@ -62,10 +62,10 @@ public class RetrievalAugmentationService(
 			
 		return result;
 	}
-	public async Task<ICollection<ExtendedRetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
+	public async Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
 	{
 		if (queries.Count == 0)
-			return Array.Empty<ExtendedRetrievalResult>();
+			return Array.Empty<RetrievalResult>();
 
 		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
 		
@@ -79,7 +79,7 @@ public class RetrievalAugmentationService(
 		logger.LogInformation("Generated {Count} embeddings in {Time:F2}s", embeddings.Count, embeddingStopwatch.Elapsed.TotalSeconds);
 
 		// Потокобезпечна колекція для збору результатів пошуку
-		var searchResults = new ConcurrentBag<ExtendedRetrievalResult>();
+		var searchResults = new ConcurrentBag<RetrievalResult>();
 		
 		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно для пошуку)
 		var parallelOptions = new ParallelOptions
@@ -111,7 +111,7 @@ public class RetrievalAugmentationService(
 				logger.LogInformation("Search for '{Query}' completed. Chunks found: {Count}. Time: {Time:F2}s", 
 					query, chunks.Count, stepStopwatch.Elapsed.TotalSeconds);
 				
-				var retrievalResult = new ExtendedRetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
+				var retrievalResult = new RetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
 				searchResults.Add(retrievalResult);
 			}
 			catch (Exception ex)

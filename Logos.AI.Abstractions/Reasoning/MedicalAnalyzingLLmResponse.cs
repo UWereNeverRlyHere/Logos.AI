@@ -21,8 +21,9 @@ public record MedicalAnalyzingLLmResponse
     [Description("Список використаних джерел (протоколів)")]
     public required List<ClinicalReference> References { get; init; } = [];
 
+    
     [Description("Повний текст звіту у форматі Markdown для відображення користувачу")]
-    public string? FormattedReport { get; init; }
+    public string FormattedReport { get; init; }
 }
 
 public record ClinicalSummary
@@ -49,13 +50,13 @@ public record ClinicalHypothesis
 public record ActionPlan
 {
     [Description("Рекомендовані додаткові обстеження")]
-    public required List<RecommendationItem> Diagnostics { get; init; } = [];
+    public required List<DiagnosticItem> Diagnostics { get; init; } = []; // Змінено тип
 
     [Description("Рекомендовані консультації спеціалістів")]
-    public required List<RecommendationItem> Consultations { get; init; } = [];
+    public required List<ConsultationItem> Consultations { get; init; } = []; // Змінено тип
 
     [Description("Рекомендації щодо способу життя та лікування")]
-    public required List<RecommendationItem> LifestyleAndTherapy { get; init; } = [];
+    public required List<LifestyleItem> LifestyleAndTherapy { get; init; } = []; // Змінено тип
 }
 public record RecommendationItem
 {
@@ -67,8 +68,9 @@ public record RecommendationItem
 
     [Description("Назва протоколу або джерела, на якому базується рекомендація")]
     public string? ProtocolReference { get; init; }
-    [Description("Тип джерела рекомендації. Важливо: 'Protocol' - якщо знайдено в наданих документах, 'GeneralPractice' - якщо це загальновідома медична практика, але протоколу в контексті немає.")]
-    public required string SourceType { get; init; } // "Protocol" | "GeneralPractice"
+    
+    [Description("Тип джерела рекомендації. Важливо: 'Protocol' - якщо знайдено в наданих документах, 'GeneralPractice' - якщо це загальновідома медична практика.")]
+    public required string SourceType { get; init; } 
     
     [Description("Обґрунтування рекомендації (нащо це робити)")]
     public string? Reasoning { get; init; }
@@ -82,3 +84,6 @@ public record ClinicalReference
     [Description("Повна назва джерела")]
     public required string Title { get; init; }
 }
+public record DiagnosticItem : RecommendationItem;
+public record ConsultationItem : RecommendationItem;
+public record LifestyleItem : RecommendationItem;

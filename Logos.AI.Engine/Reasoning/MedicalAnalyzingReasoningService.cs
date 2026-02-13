@@ -15,7 +15,7 @@ public class MedicalAnalyzingReasoningService(
 {
 	private readonly LlmOptions _options = options.Value.MedicalAnalyzing;
 
-	public async Task<ReasoningResult<MedicalAnalyzingLLmResponse>> AnalyzeAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default)
+	public async Task<ReasoningResult<MedicalAnalyzingLLmResponse>> AnalyzeAsync(AugmentedPatientAnalyze request, CancellationToken ct = default)
 	{
 		try
 		{

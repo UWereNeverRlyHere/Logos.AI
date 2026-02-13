@@ -3,7 +3,7 @@
 public record OpenAiOptions
 {
 	public const string SectionName = "OpenAI";
-	public string Model { get; init; } = "gpt-4o-mini";
+	public string Model { get; init; } = "gpt-4o";
 	public string ApiKey { get; init; } = string.Empty;
 	public LlmOptions MedicalAnalyzing { get; init; } = new();
 	public LlmOptions MedicalContext { get; init; } = new();
@@ -13,9 +13,10 @@ public record OpenAiOptions
 
 public record LlmOptions
 {
-	public string Model { get; init; } = "gpt-4o-mini";
+	public string Model { get; init; } = "gpt-4o";
 	public string PromptFile { get; init; } = "";
 	public int MaxTokens { get; init; } = 1024;
+	public bool IncludeLogProbabilities { get; init; } = true;
 	public int TopLogProbabilityCount { get; init; } = 5;
 	public float Temperature { get; init; } = 0.2f;
 	public float TopP { get; init; } = 0.95f;

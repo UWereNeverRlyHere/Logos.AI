@@ -11,7 +11,7 @@ public interface IRetrievalAugmentationService
     /// <param name="queries">Колекція пошукових фраз.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку з чанками та метаданими.</returns>
-    Task<ICollection<ExtendedRetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default);
+    Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default);
 
     /// <summary>
     /// Виконує "розумну" аугментацію:

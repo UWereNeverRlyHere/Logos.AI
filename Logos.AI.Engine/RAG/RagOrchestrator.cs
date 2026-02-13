@@ -14,9 +14,18 @@ public class RagOrchestrator(
 {
 	public async Task<PatientAnalyzeRagResponse> GenerateResponseAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default)
 	{
+		// 1. Поиск (тяжелые данные)
 		RetrievalAugmentationResult augmentationRes = await retrievalAugmentationService.AugmentAsync(request, ct);
-		var reasoningRes = await reasoningService.AnalyzeAsync(request, ct);
-		//var confidenceRes = await confidenceValidator.ValidateAsync(reasoningRes);
+
+		// 3. Сборка DTO (вся логика маппинга скрыта внутри DTO)
+		var augmentedData = new AugmentedPatientAnalyze
+		{
+			PatientAnalyzeData = request,
+			PreliminaryDiagnosticHypothesis = augmentationRes.PreliminaryDiagnosticHypothesis,
+			RetrievalResults = ContextRetrievalDto.CreateFromRetrievalResults(augmentationRes.RetrievalResults)
+		};
+		
+		var reasoningRes = await reasoningService.AnalyzeAsync(augmentedData, ct);
 		var generationResult = new RagResult
 		{
 			TotalProcessingTimeSeconds = 0,

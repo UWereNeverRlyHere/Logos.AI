@@ -35,6 +35,7 @@ public static class LogosEngineExtensions
 		// RAG та Ембеддінги (RAG & Embeddings)
 		builder.Services.AddScoped<OpenAIEmbeddingService>();
 		builder.Services.AddScoped<IRetrievalAugmentationService, RetrievalAugmentationService>();
+		builder.Services.AddScoped<RagOrchestrator>();
 
 		// Інтелект та міркування (Reasoning & AI Logic)
 		builder.Services.AddScoped<LlmClientWrapper>();

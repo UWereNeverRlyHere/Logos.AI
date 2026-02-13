@@ -87,13 +87,15 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 
 	private ChatCompletionOptions GetChatCompletionOptions(LlmRequestDto requestDto)
 	{
+		int? llmOptionsTopLogProbabilityCount = requestDto.LlmOptions.TopLogProbabilityCount;
+		if(llmOptionsTopLogProbabilityCount ==0) llmOptionsTopLogProbabilityCount = null;
 		var options = new ChatCompletionOptions
 		{
 			Temperature = requestDto.LlmOptions.Temperature,
 			TopP = requestDto.LlmOptions.TopP,
 			MaxOutputTokenCount = requestDto.LlmOptions.MaxTokens,
-			IncludeLogProbabilities = true,
-			TopLogProbabilityCount = requestDto.LlmOptions.TopLogProbabilityCount, 
+			IncludeLogProbabilities = requestDto.LlmOptions.IncludeLogProbabilities,
+			TopLogProbabilityCount = llmOptionsTopLogProbabilityCount, 
 			ResponseFormat = requestDto.ResponseFormat,
 			// Параметри "на майбутнє":
 			// FrequencyPenalty = 0, //Штрафує за часте повторення слів.
