@@ -5,7 +5,7 @@ public record RagOptions
 	public const string SectionName = "Rag"; 
 	public int ChunkSizeWords { get; init; } = 300; 
 	public int ChunkOverlapWords { get; init; } = 50;
-	public float MinScore { get; init; } = 0.5f;
+	public float MinScore { get; init; } = 0.3f;
 	
 	public QdrantOptions Qdrant { get; init; } = new();
 }

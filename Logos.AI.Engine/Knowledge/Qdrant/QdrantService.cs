@@ -16,7 +16,7 @@ public class QdrantService : IVectorStorageService
 	private readonly string _collectionName;
 	private readonly int _vectorSize;
 	private readonly RagOptions _options;
-	public QdrantService(QdrantClient client, IOptions<RagOptions> options, ILogger<QdrantService> logger)
+	public QdrantService(QdrantClient client, IOptionsSnapshot<RagOptions> options, ILogger<QdrantService> logger)
 	{
 		_options = options.Value;
 		_collectionName = _options.Qdrant.CollectionName;

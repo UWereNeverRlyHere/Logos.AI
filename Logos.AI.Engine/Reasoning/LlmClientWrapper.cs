@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Reasoning;
-using Logos.AI.Engine.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
