@@ -96,7 +96,6 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 			IncludeLogProbabilities = true,
 			TopLogProbabilityCount = requestDto.LlmOptions.TopLogProbabilityCount, 
 			ResponseFormat = requestDto.ResponseFormat,
-
 			// Параметри "на майбутнє":
 			// FrequencyPenalty = 0, //Штрафує за часте повторення слів.
 			// PresencePenalty = 0,//Штрафує за те, що слово взагалі вже було в тексті.

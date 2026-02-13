@@ -1,0 +1,17 @@
+﻿{
+  "ModelOptions": {
+    "ModelsLogProbSupport": [
+      { "Name": "text-davinci-003", "LogProbsSupported": true },
+      { "Name": "gpt-3.5-turbo-instruct-0613", "LogProbsSupported": true },
+      { "Name": "text-davinci-002", "LogProbsSupported": true },
+      { "Name": "gpt-3.5-turbo-1106", "LogProbsSupported": "partial" },
+      { "Name": "gpt-4o", "LogProbsSupported": "partial" },
+      { "Name": "gpt-4o-mini", "LogProbsSupported": "partial" },
+      { "Name": "gpt-4.1", "LogProbsSupported": "partial" },
+      { "Name": "gpt-5.1", "LogProbsSupported": false },
+      { "Name": "gpt-5.2", "LogProbsSupported": false },
+      { "Name": "gpt-4-turbo", "LogProbsSupported": false },
+      { "Name": "gpt-oss-120b", "LogProbsSupported": false }
+    ]
+  }
+}

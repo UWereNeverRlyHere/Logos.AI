@@ -63,7 +63,6 @@ public class IngestionService(
 			var pointId = $"{docId}-{count}";
 			var payload = KnowledgeDictionary.Create()
 				.SetDocumentId(docId)
-				.SetFileName(simpleDocChunk.FileName)
 				.SetDocumentTitle(simpleDocChunk.DocumentTitle)
 				.SetDocumentDescription(simpleDocChunk.DocumentDescription)
 				.SetPageNumber(chunk.PageNumber)

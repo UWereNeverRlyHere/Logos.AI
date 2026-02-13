@@ -146,7 +146,7 @@ public class RagController(
 				}
 
 				ViewBag.Answer = sb.ToString();
-				ViewBag.SourceDocuments = string.Join(", ", results.Select(r => r.FileName).Distinct());
+				ViewBag.SourceDocuments = string.Join(", ", results.Select(r => r.DocumentTitle).Distinct());
 			}
 			else
 			{

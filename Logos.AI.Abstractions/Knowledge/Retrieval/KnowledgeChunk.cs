@@ -15,9 +15,6 @@ public record KnowledgeChunk
 	[Description("Можливий опис документу")]
 	public string DocumentDescription { get; init; } = string.Empty;
 
-	[Description("Ім'я файлу")]
-	public string FileName { get; init; } = string.Empty;
-
 	[Description("Номер сторінки, на якій знаходиться фрагмент тексту")]
 	public int PageNumber { get; init; }
 

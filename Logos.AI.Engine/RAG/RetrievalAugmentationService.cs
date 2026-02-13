@@ -49,8 +49,11 @@ public class RetrievalAugmentationService(
 		var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
 		globalStopwatch.Stop();
 		// 4. Формування фінального результату
-		var result = new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes);
-		
+		var result = new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes)
+		{
+			MedicalContextLlmResponse = medicalContext.Data
+		};
+			
 		logger.LogInformation(
 			"Retrieval augmentation finished in {Time:F2}s. Total queries: {Count}. Unique chunks: {UniqueCount}",
 			result.TotalProcessingTimeSeconds,

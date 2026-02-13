@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge.Retrieval;
+using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.Validation;
 namespace Logos.AI.Abstractions.RAG;
 
@@ -14,6 +15,8 @@ public record RetrievalAugmentationResult
 	
 	[Description("Середній Score релевантності по всім унікальним чанкам")]
 	public float GlobalAverageScore { get; private set;}
+	[Description("Результат виділення медичного контексту")]
+	public MedicalContextLlmResponse MedicalContextLlmResponse { get; init; }
 	
 	[Description("Результат перевірки впевненості моделі, після виділення медичного контексту")]
 	public ConfidenceValidationResult MedicalContextConfidence { get; init; } = new();

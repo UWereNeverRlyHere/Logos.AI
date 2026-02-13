@@ -1,5 +1,4 @@
 ﻿using Logos.AI.Abstractions.Exceptions;
-using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
@@ -14,7 +13,7 @@ namespace Logos.AI.Engine.Reasoning;
 
 public class MedicalContextReasoningService(
 	LlmClientWrapper                        llmClientWrapper,
-	IOptions<OpenAiOptions>                 options,
+	IOptionsSnapshot<OpenAiOptions>         options,
 	ILogger<MedicalContextReasoningService> logger) : IMedicalContextReasoningService
 {
 	private readonly LlmOptions _contextOptions = options.Value.MedicalContext;

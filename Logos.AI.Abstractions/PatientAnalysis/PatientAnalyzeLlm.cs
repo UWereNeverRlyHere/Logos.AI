@@ -22,6 +22,9 @@ public record MedicalContextLlmResponse
 	[JsonPropertyName("queries")]
 	[Description("Список пошукових запитів для клінічних протоколів")]
 	public required List<string> Queries { get; init; } = new();
+	[JsonPropertyName("_thinking_scratchpad")]
+	[Description("Internal reasoning: step-by-step analysis of deviations and logic before forming queries.")]
+	public string ThinkingScratchpad { get; set; }
 }
 
 /// <summary>

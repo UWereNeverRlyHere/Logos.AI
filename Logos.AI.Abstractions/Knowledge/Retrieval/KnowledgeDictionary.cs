@@ -2,7 +2,6 @@
 internal static class KnowledgePayloadFields
 {
 	public const string DocumentId = "documentId";
-	public const string FileName = "fileName";
 	public const string DocumentTitle = "documentTitle";
 	public const string DocumentDescription = "documentDescription";
 	public const string PageNumber = "pageNumber";
@@ -14,7 +13,6 @@ public class KnowledgeDictionary
 	private Dictionary<string, object> Payload { get; } = new()
 	{
 		[KnowledgePayloadFields.DocumentId] = "",
-		[KnowledgePayloadFields.FileName] = "",
 		[KnowledgePayloadFields.DocumentTitle] = "",
 		//[KnowledgePayloadFields.DocumentDescription] = "", // Можливо додам генерацію опису з ШІ
 		[KnowledgePayloadFields.PageNumber] = "",
@@ -37,11 +35,6 @@ public class KnowledgeDictionary
 	public KnowledgeDictionary SetDocumentId(string docId)
 	{
 		Payload[KnowledgePayloadFields.DocumentId] = docId;
-		return this;
-	}
-	public KnowledgeDictionary SetFileName(string fileName)
-	{
-		Payload[KnowledgePayloadFields.FileName] = fileName;
 		return this;
 	}
 	public KnowledgeDictionary SetDocumentTitle(string documentTitle)
@@ -93,7 +86,6 @@ public class KnowledgeDictionary
 			DocumentId = Guid.TryParse(GetVal(KnowledgePayloadFields.DocumentId), out var g) ? g : Guid.Empty,
 			DocumentTitle = GetVal(KnowledgePayloadFields.DocumentTitle),
 			DocumentDescription = GetVal(KnowledgePayloadFields.DocumentDescription),
-			FileName = GetVal(KnowledgePayloadFields.FileName),
 			// Безпечний парсинг Int
 			PageNumber = int.TryParse(GetVal(KnowledgePayloadFields.PageNumber), out var p) ? p : 0,
 			Content = GetVal(KnowledgePayloadFields.FullText),

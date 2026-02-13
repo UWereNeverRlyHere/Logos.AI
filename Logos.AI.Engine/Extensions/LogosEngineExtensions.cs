@@ -1,6 +1,5 @@
 ﻿using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.RAG;
-using Logos.AI.Abstractions.Reasoning;
 using Logos.AI.Abstractions.Reasoning.Contracts;
 using Logos.AI.Abstractions.Validation.Contracts;
 using Logos.AI.Engine.Configuration;
@@ -15,7 +14,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using OpenAI.Chat;
 using OpenAI.Embeddings;
 using Qdrant.Client;
 namespace Logos.AI.Engine.Extensions;

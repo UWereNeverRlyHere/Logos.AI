@@ -13,6 +13,8 @@ public record BulkIngestionResult
 	public int FullInputTokenCount { get; init; }
 	public int ChunksCount => IngestionResults.Select(x=>x.ChunksCount).Sum();
 	public int TotalDocuments => IngestionResults.Count;
+	public int TotalExistingDocuments => IngestionResults.Count(x=>x.IsAlreadyExists);
+	public int TotalNewDocuments =>  IngestionResults.Count(x => !x.IsAlreadyExists);
 	public int SuccessfulDocuments => IngestionResults.Count(x=>x.IsSuccess);
 	public int FailedDocuments => IngestionResults.Count(x=>!x.IsSuccess);
 	public ICollection<IngestionResult> IngestionResults { get; init; } = new List<IngestionResult>();

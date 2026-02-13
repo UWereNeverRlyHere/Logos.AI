@@ -18,6 +18,6 @@ public interface IMedicalContextReasoningService : IReasoningService<PatientAnal
 }
 
 // Конкретний інтерфейс для Clinical Reasoning
-public interface IMedicalAnalyzingReasoningService : IReasoningService<PatientAnalyzeLlmRequest, MedicalAnalyzingLLmResponse> 
+public interface IMedicalAnalyzingReasoningService : IReasoningService<PatientAnalyzeLlmRequest, MedicalAnalyzingLLmResponse>
 {
 }

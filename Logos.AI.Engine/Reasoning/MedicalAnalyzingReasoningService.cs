@@ -10,7 +10,7 @@ namespace Logos.AI.Engine.Reasoning;
 
 public class MedicalAnalyzingReasoningService(
 	LlmClientWrapper                          llmClientWrapper,
-	IOptions<OpenAiOptions>                   options,
+	IOptionsSnapshot<OpenAiOptions>           options,
 	ILogger<MedicalAnalyzingReasoningService> logger) : IMedicalAnalyzingReasoningService
 {
 	private readonly LlmOptions _options = options.Value.MedicalAnalyzing;
