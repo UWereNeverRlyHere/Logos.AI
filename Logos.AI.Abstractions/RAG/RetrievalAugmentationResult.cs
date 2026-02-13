@@ -8,18 +8,24 @@ namespace Logos.AI.Abstractions.RAG;
 public record RetrievalAugmentationResult
 {
 	[Description("Загальний час виконання всієї операції (в секундах)")]
-	public double TotalProcessingTimeSeconds { get; private set; }
+	public required double TotalProcessingTimeSeconds { get; init; }
 
 	[Description("Сумарна кількість токенів, витрачених на ембеддінг всіх запитів")]
-	public TokenUsageInfo FullEmbeddingTokensSpent { get; private set; }
+	public TokenUsageInfo EmbeddingTokensSpent { get; init; }
+
+	[Description("Сумарна кількість токенів, витрачених на модель для виділення контексту")]
+	public required TokenUsageInfo ReasoningTokensSpent { get; init; }
+
+	[Description("Сумарна кількість токенів, витрачених на пошук даних та аугментацію")]
+	public required TokenUsageInfo AugmentationTokensSpent { get; init; }
 
 	[Description("Середній Score релевантності по всім унікальним чанкам")]
-	public float GlobalAverageScore { get; private set; }
+	public float GlobalAverageScore { get; init; }
 	[Description("Результат виділення медичного контексту")]
-	public MedicalContextLlmResponse MedicalContextLlmResponse { get; init; }
+	public required MedicalContextLlmResponse MedicalContextLlmResponse { get; init; }
 
 	[Description("Результат перевірки впевненості моделі, після виділення медичного контексту")]
-	public ConfidenceValidationResult MedicalContextConfidence { get; init; } = new();
+	public required ConfidenceValidationResult MedicalContextConfidence { get; init; } = new();
 
 	[Description("Загальна кількість результатів пошуку (запитів) у цьому аугментуванні")]
 	public int TotalRetrievalResults => RetrievalResults.Count;
@@ -28,7 +34,7 @@ public record RetrievalAugmentationResult
 	public int TotalChunksFound => RetrievalResults.Sum(r => r.TotalChunksFound);
 
 	[Description("Детальна історія: який запит -> який вектор -> які чанки знайшли")]
-	public ICollection<RetrievalResult> RetrievalResults { get; init; } = new List<RetrievalResult>();
+	public required ICollection<ExtendedRetrievalResult> RetrievalResults { get; init; } = new List<ExtendedRetrievalResult>();
 
 	[Description("Повертає всі знайдені чанки у результаті пошуку, включаючи дублікати. Результат може бути використаний для аналізу всіх знайдених чанків.")]
 	public IEnumerable<KnowledgeChunk> GetChunks() => RetrievalResults.SelectMany(r => r.FoundChunks);
@@ -45,14 +51,46 @@ public record RetrievalAugmentationResult
 			.OrderByDescending(c => c.Score) // Спочатку найбільш релевантні
 			.ToList();
 	}
-	public RetrievalAugmentationResult(double totalProcessingTimeSeconds, ConfidenceValidationResult confidence, ICollection<RetrievalResult> retrievalResults)
+	private RetrievalAugmentationResult()
 	{
-		TotalProcessingTimeSeconds = totalProcessingTimeSeconds;
-		RetrievalResults = retrievalResults;
-		MedicalContextConfidence = confidence;
-		var totalInput = RetrievalResults.Sum(s => s.Embedding.GetInputTokenCount());
-		var totalTotal = RetrievalResults.Sum(s => s.Embedding.GetTotalTokenCount());
-		FullEmbeddingTokensSpent = new TokenUsageInfo(totalInput, totalTotal);
-		GlobalAverageScore = retrievalResults.Any() ? retrievalResults.SelectMany(c => c.FoundChunks).Average(c => c.Score) : 0f;
+		var eTotalInput = RetrievalResults.Sum(s => s.Embedding.GetInputTokenCount());
+		var eTotalTotal = RetrievalResults.Sum(s => s.Embedding.GetTotalTokenCount());
+		EmbeddingTokensSpent = new TokenUsageInfo(eTotalInput, eTotalTotal);
+		AugmentationTokensSpent = new TokenUsageInfo(EmbeddingTokensSpent.InputTokenCount + ReasoningTokensSpent.InputTokenCount, EmbeddingTokensSpent.TotalTokenCount + ReasoningTokensSpent.TotalTokenCount);
+		GlobalAverageScore = RetrievalResults.Any() ? RetrievalResults.SelectMany(c => c.FoundChunks).Average(c => c.Score) : 0f;
+	}
+
+	[Description("DTO для ініціалізації через Create")]
+	public record CreateRequest
+	{
+		public required double TotalProcessingTimeSeconds { get; init; }
+		public required MedicalContextLlmResponse MedicalContextLlmResponse { get; init; }
+		public required TokenUsageInfo ReasoningTokensSpent { get; init; }
+		public required ICollection<ExtendedRetrievalResult> RetrievalResults { get; init; }
+		public required ConfidenceValidationResult MedicalContextConfidence { get; init; }
+	}
+	/// <summary>
+	/// Фабрика для створення RetrievalAugmentationResult з автоматичним розрахунком похідних полів
+	/// </summary>
+	public static RetrievalAugmentationResult Create(CreateRequest request)
+	{
+		var eTotalInput = request.RetrievalResults.Sum(s => s.Embedding.GetInputTokenCount());
+		var eTotalTotal = request.RetrievalResults.Sum(s => s.Embedding.GetTotalTokenCount());
+		var embeddingTokensSpent = new TokenUsageInfo(eTotalInput, eTotalTotal);
+		var augmentationTokensSpent = new TokenUsageInfo(embeddingTokensSpent.InputTokenCount + request.ReasoningTokensSpent.InputTokenCount, embeddingTokensSpent.TotalTokenCount + request.ReasoningTokensSpent.TotalTokenCount);
+		var globalAverageScore = request.RetrievalResults.Any() ? request.RetrievalResults.SelectMany(c => c.FoundChunks).Average(c => c.Score) : 0f;
+		
+		var result = new RetrievalAugmentationResult
+		{
+			TotalProcessingTimeSeconds = request.TotalProcessingTimeSeconds,
+			MedicalContextLlmResponse = request.MedicalContextLlmResponse,
+			ReasoningTokensSpent = request.ReasoningTokensSpent,
+			RetrievalResults = request.RetrievalResults,
+			MedicalContextConfidence = request.MedicalContextConfidence,
+			EmbeddingTokensSpent = embeddingTokensSpent,
+			AugmentationTokensSpent = augmentationTokensSpent,
+			GlobalAverageScore = globalAverageScore
+		};
+		return result;
 	}
 }

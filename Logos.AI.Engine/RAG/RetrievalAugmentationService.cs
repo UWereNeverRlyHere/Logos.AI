@@ -1,16 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Logos.AI.Abstractions.Exceptions;
-using Logos.AI.Abstractions.Knowledge;
 using Logos.AI.Abstractions.Knowledge.Contracts;
-using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning.Contracts;
 using Logos.AI.Abstractions.Validation.Contracts;
-using Logos.AI.Engine.Extensions;
 using Microsoft.Extensions.Logging;
-
 namespace Logos.AI.Engine.RAG;
 
 public class RetrievalAugmentationService(
@@ -49,10 +45,14 @@ public class RetrievalAugmentationService(
 		var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
 		globalStopwatch.Stop();
 		// 4. Формування фінального результату
-		var result = new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes)
+		var result =  RetrievalAugmentationResult.Create(new()
 		{
-			MedicalContextLlmResponse = medicalContext.Data
-		};
+			TotalProcessingTimeSeconds = globalStopwatch.Elapsed.TotalSeconds,
+			MedicalContextLlmResponse = medicalContext.Data,
+			ReasoningTokensSpent = medicalContext.TokenUsage,
+			RetrievalResults = retrieveRes,
+			MedicalContextConfidence = validationRes
+		});
 			
 		logger.LogInformation(
 			"Retrieval augmentation finished in {Time:F2}s. Total queries: {Count}. Unique chunks: {UniqueCount}",
@@ -62,52 +62,70 @@ public class RetrievalAugmentationService(
 			
 		return result;
 	}
-
-	// Перевантаження для обробки JSON-рядка запиту
-	public async Task<RetrievalAugmentationResult> AugmentAsync(string jsonRequest, CancellationToken ct = default)
+	public async Task<ICollection<ExtendedRetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
 	{
-		var globalStopwatch = Stopwatch.StartNew();
-		logger.LogInformation("Starting retrieval augmentation from JSON request");
-		try
-		{
-			// Спроба десеріалізації JSON у об'єкт запиту
-			var request = jsonRequest.DeserializeFromJson<PatientAnalyzeRagRequest>();
-			if (request == null)
-			{
-				logger.LogError("Failed to deserialize JSON request: Result is null");
-				throw new ArgumentException("Invalid JSON format or empty content.");
-			}
+		if (queries.Count == 0)
+			return Array.Empty<ExtendedRetrievalResult>();
 
-			logger.LogDebug("JSON successfully deserialized to PatientAnalyzeLlmRequest");
-			return await AugmentAsync(request, ct);
-		}
-		catch (Exception ex)
+		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
+		
+		var queryList = queries.ToList();
+		
+		// 1. Векторизація всіх запитів одночасно (Embedding)
+		logger.LogDebug("Generating embeddings for {Count} queries in bulk", queryList.Count);
+		var embeddingStopwatch = Stopwatch.StartNew();
+		var embeddings = await embeddingService.GetEmbeddingsAsync(queryList, ct);
+		embeddingStopwatch.Stop();
+		logger.LogInformation("Generated {Count} embeddings in {Time:F2}s", embeddings.Count, embeddingStopwatch.Elapsed.TotalSeconds);
+
+		// Потокобезпечна колекція для збору результатів пошуку
+		var searchResults = new ConcurrentBag<ExtendedRetrievalResult>();
+		
+		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно для пошуку)
+		var parallelOptions = new ParallelOptions
 		{
-			logger.LogWarning("Standard JSON augmentation failed or request is in alternative format. Attempting direct reasoning analysis. Error: {Message}", ex.Message);
+			MaxDegreeOfParallelism = 5,
+			CancellationToken = ct
+		};
+
+		// 2. Пошук схожих фрагментів у векторній БД Qdrant для кожного запиту
+		await Parallel.ForEachAsync(Enumerable.Range(0, queryList.Count), parallelOptions, async (index, token) =>
+		{
+			var query = queryList[index];
+			var embedResult = embeddings[index];
 			
-			// 1. Аналіз контексту безпосередньо з тексту
-			var medicalContext = await contextReasoningService.AnalyzeAsync(jsonRequest, ct);
-			if (!medicalContext.Data.IsMedical)
+			var stepStopwatch = Stopwatch.StartNew();
+			try
 			{
-				logger.LogWarning("Direct reasoning identified content as non-medical");
-				RagException.ThrowForNotMedical(medicalContext);
-			}
-			// 2. Валідація впевненості
-			var validationRes = await confidenceValidator.ValidateAsync(medicalContext);
-			if (!validationRes.IsValid)
-			{
-				logger.LogWarning("Confidence validation failed for direct reasoning (Score: {Score:F2})", validationRes.Score);
-				RagException.ThrowForConfidenceValidationFailed(medicalContext.Data,validationRes);
-			}
-			// 3. Пошук контексту
-			var retrieveRes = await RetrieveContextAsync(medicalContext.Data.Queries, ct);
-			globalStopwatch.Stop();
-			logger.LogInformation("Direct reasoning augmentation completed in {Time:F2}s", globalStopwatch.Elapsed.TotalSeconds);
-			// Повертаємо повноцінний результат, а не просто колекцію чанків
-			return new RetrievalAugmentationResult(globalStopwatch.Elapsed.TotalSeconds, validationRes, retrieveRes);
-		}
-	}
+				logger.LogDebug("Processing query: '{Query}'", query);
+				
+				// Логування інформації про отриманий ембеддінг (збережено для сумісності з попередніми логами)
+				logger.LogInformation("Embedding for '{Query}' retrieved from bulk result. Tokens: {Tokens}", 
+					query, embedResult.EmbeddingTokensSpent.TotalTokenCount);
 
+				// Пошук у Qdrant
+				logger.LogDebug("Searching Qdrant for query: '{Query}'", query);
+				var chunks = await qdrantService.SearchAsync(embedResult.Vector.ToArray(), token);
+				stepStopwatch.Stop();
+				
+				logger.LogInformation("Search for '{Query}' completed. Chunks found: {Count}. Time: {Time:F2}s", 
+					query, chunks.Count, stepStopwatch.Elapsed.TotalSeconds);
+				
+				var retrievalResult = new ExtendedRetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
+				searchResults.Add(retrievalResult);
+			}
+			catch (Exception ex)
+			{
+				logger.LogError(ex, "Error during retrieval for query '{Query}': {Message}", query, ex.Message);
+			}
+		});
+
+		logger.LogInformation("Retrieval cycle completed. Total results collected: {Count}", searchResults.Count);
+		return searchResults.ToList();
+	}
+	
+	
+	/*
 	/// <summary>
     /// Повний цикл: Аналіз пацієнта -> Пошук -> Групування по документах -> ШІ-Валідація -> Фільтрація.
     /// </summary>
@@ -200,67 +218,5 @@ public class RetrievalAugmentationService(
             totalTime, finalResult.GetUniqueChunks().Count);
 
         return finalResult;
-    }
-
-	public async Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default)
-	{
-		if (queries.Count == 0)
-			return Array.Empty<RetrievalResult>();
-
-		logger.LogInformation("Starting knowledge retrieval for {Count} queries", queries.Count);
-		
-		var queryList = queries.ToList();
-		
-		// 1. Векторизація всіх запитів одночасно (Embedding)
-		logger.LogDebug("Generating embeddings for {Count} queries in bulk", queryList.Count);
-		var embeddingStopwatch = Stopwatch.StartNew();
-		var embeddings = await embeddingService.GetEmbeddingsAsync(queryList, ct);
-		embeddingStopwatch.Stop();
-		logger.LogInformation("Generated {Count} embeddings in {Time:F2}s", embeddings.Count, embeddingStopwatch.Elapsed.TotalSeconds);
-
-		// Потокобезпечна колекція для збору результатів пошуку
-		var searchResults = new ConcurrentBag<RetrievalResult>();
-		
-		// Конфігурація паралельного виконання (обмеження до 5 запитів одночасно для пошуку)
-		var parallelOptions = new ParallelOptions
-		{
-			MaxDegreeOfParallelism = 5,
-			CancellationToken = ct
-		};
-
-		// 2. Пошук схожих фрагментів у векторній БД Qdrant для кожного запиту
-		await Parallel.ForEachAsync(Enumerable.Range(0, queryList.Count), parallelOptions, async (index, token) =>
-		{
-			var query = queryList[index];
-			var embedResult = embeddings[index];
-			
-			var stepStopwatch = Stopwatch.StartNew();
-			try
-			{
-				logger.LogDebug("Processing query: '{Query}'", query);
-				
-				// Логування інформації про отриманий ембеддінг (збережено для сумісності з попередніми логами)
-				logger.LogInformation("Embedding for '{Query}' retrieved from bulk result. Tokens: {Tokens}", 
-					query, embedResult.EmbeddingTokensSpent.TotalTokenCount);
-
-				// Пошук у Qdrant
-				logger.LogDebug("Searching Qdrant for query: '{Query}'", query);
-				var chunks = await qdrantService.SearchAsync(embedResult.Vector.ToArray(), token);
-				stepStopwatch.Stop();
-				
-				logger.LogInformation("Search for '{Query}' completed. Chunks found: {Count}. Time: {Time:F2}s", 
-					query, chunks.Count, stepStopwatch.Elapsed.TotalSeconds);
-				
-				var retrievalResult = new RetrievalResult(query, embedResult, chunks, stepStopwatch.Elapsed.TotalSeconds);
-				searchResults.Add(retrievalResult);
-			}
-			catch (Exception ex)
-			{
-				logger.LogError(ex, "Error during retrieval for query '{Query}': {Message}", query, ex.Message);
-			}
-		});
-
-		logger.LogInformation("Retrieval cycle completed. Total results collected: {Count}", searchResults.Count);
-		return searchResults.ToList();
-	}
+    }*/
 }

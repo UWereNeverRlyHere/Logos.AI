@@ -13,8 +13,8 @@ public record KnowledgeChunk
 	[Description("Назва документу (заголовок)")]
 	public string DocumentTitle { get; init; } = string.Empty;
 	[Description("Можливий опис документу")]
-	public string DocumentDescription { get; init; } = string.Empty;
-
+	public string? DocumentDescription { get; init; } 
+	
 	[Description("Номер сторінки, на якій знаходиться фрагмент тексту")]
 	public int PageNumber { get; init; }
 

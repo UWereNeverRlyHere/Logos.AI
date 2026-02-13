@@ -11,7 +11,7 @@ public interface IRetrievalAugmentationService
     /// <param name="queries">Колекція пошукових фраз.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку з чанками та метаданими.</returns>
-    Task<ICollection<RetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default);
+    Task<ICollection<ExtendedRetrievalResult>> RetrieveContextAsync(ICollection<string> queries, CancellationToken ct = default);
 
     /// <summary>
     /// Виконує "розумну" аугментацію:
@@ -30,7 +30,7 @@ public interface IRetrievalAugmentationService
     /// <param name="jsonRequest">JSON-рядок, що представляє PatientAnalyzeLlmRequest.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку.</returns>
-    Task<RetrievalAugmentationResult> AugmentAsync(string jsonRequest, CancellationToken ct = default);
+    ///Task<RetrievalAugmentationResult> AugmentAsync(string jsonRequest, CancellationToken ct = default);
 
     /// <summary>
     /// Виконує найбільш повний та точний цикл RAG:
@@ -42,5 +42,5 @@ public interface IRetrievalAugmentationService
     /// <param name="request">Структурований запит з даними пацієнта.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку, що містить тільки перевірені та релевантні дані, а також оцінки AI.</returns>
-    Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default);
+    ///Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default);
 }
