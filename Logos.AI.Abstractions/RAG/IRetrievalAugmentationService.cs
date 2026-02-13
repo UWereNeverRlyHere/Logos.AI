@@ -22,10 +22,10 @@ public interface IRetrievalAugmentationService
     /// <param name="request">Структурований запит з даними пацієнта.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку, адаптований під контекст пацієнта.</returns>
-    Task<RetrievalAugmentationResult> AugmentAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default);
+    Task<RetrievalAugmentationResult> AugmentAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Перевантаження методу <see cref="AugmentAsync(PatientAnalyzeLlmRequest, CancellationToken)"/> для роботи з JSON-рядком.
+    /// Перевантаження методу <see cref="AugmentAsync(PatientAnalyzeRagRequest, CancellationToken)"/> для роботи з JSON-рядком.
     /// </summary>
     /// <param name="jsonRequest">JSON-рядок, що представляє PatientAnalyzeLlmRequest.</param>
     /// <param name="ct">Токен скасування.</param>
@@ -34,7 +34,7 @@ public interface IRetrievalAugmentationService
 
     /// <summary>
     /// Виконує найбільш повний та точний цикл RAG:
-    /// 1. <see cref="AugmentAsync(PatientAnalyzeLlmRequest, CancellationToken)"/> (Аналіз + Пошук).
+    /// 1. <see cref="AugmentAsync(PatientAnalyzeRagRequest, CancellationToken)"/> (Аналіз + Пошук).
     /// 2. Групування знайдених чанків по документах.
     /// 3. **AI-валідація релевантності** кожного документа відносно запиту пацієнта (Relevance Check).
     /// 4. Фільтрація нерелевантного "шуму".
@@ -42,5 +42,5 @@ public interface IRetrievalAugmentationService
     /// <param name="request">Структурований запит з даними пацієнта.</param>
     /// <param name="ct">Токен скасування.</param>
     /// <returns>Результат пошуку, що містить тільки перевірені та релевантні дані, а також оцінки AI.</returns>
-    Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default);
+    Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default);
 }

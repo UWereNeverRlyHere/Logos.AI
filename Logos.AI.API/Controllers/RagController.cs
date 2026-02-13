@@ -34,7 +34,7 @@ public class RagController(
 		return View("Index", new List<KnowledgeChunk>());
 	}
 	[HttpPost("testAugmentation")]
-	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeLlmRequest reqData)
+	public async Task<IActionResult> TestVectorSearch([FromBody] PatientAnalyzeRagRequest reqData)
 	{
 		if (!ModelState.IsValid) return BadRequest(ModelState);
 		var processedContext = await retrievalAugmentationService.AugmentAsync(reqData);

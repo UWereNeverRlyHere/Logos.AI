@@ -20,7 +20,7 @@ public class RetrievalAugmentationService(
 	IConfidenceValidator                  confidenceValidator,
 	ILogger<RetrievalAugmentationService> logger) : IRetrievalAugmentationService
 {
-	public async Task<RetrievalAugmentationResult> AugmentAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
+	public async Task<RetrievalAugmentationResult> AugmentAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default)
 	{
 		// Глобальний таймер для вимірювання загального часу операції
 		var globalStopwatch = Stopwatch.StartNew();
@@ -71,7 +71,7 @@ public class RetrievalAugmentationService(
 		try
 		{
 			// Спроба десеріалізації JSON у об'єкт запиту
-			var request = jsonRequest.DeserializeFromJson<PatientAnalyzeLlmRequest>();
+			var request = jsonRequest.DeserializeFromJson<PatientAnalyzeRagRequest>();
 			if (request == null)
 			{
 				logger.LogError("Failed to deserialize JSON request: Result is null");
@@ -111,7 +111,7 @@ public class RetrievalAugmentationService(
 	/// <summary>
     /// Повний цикл: Аналіз пацієнта -> Пошук -> Групування по документах -> ШІ-Валідація -> Фільтрація.
     /// </summary>
-    public async Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeLlmRequest request, CancellationToken ct = default)
+    public async Task<RetrievalAugmentationResult> AugmentValidatedAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default)
     {
         // 1. Початкова аугментація: отримання "сирих" результатів пошуку
         // Включає MedicalContextReasoningService та перевірку впевненості контексту

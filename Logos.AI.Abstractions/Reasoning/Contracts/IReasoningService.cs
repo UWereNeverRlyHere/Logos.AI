@@ -11,13 +11,13 @@ public interface IReasoningService<in TRequest, TResponse>
 }
 
 // Конкретний інтерфейс для Medical Context
-public interface IMedicalContextReasoningService : IReasoningService<PatientAnalyzeLlmRequest, MedicalContextLlmResponse>
+public interface IMedicalContextReasoningService : IReasoningService<PatientAnalyzeRagRequest, MedicalContextLlmResponse>
 {
 	Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string                    request,         CancellationToken ct = default);
 	Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default);
 }
 
 // Конкретний інтерфейс для Clinical Reasoning
-public interface IMedicalAnalyzingReasoningService : IReasoningService<PatientAnalyzeLlmRequest, MedicalAnalyzingLLmResponse>
+public interface IMedicalAnalyzingReasoningService : IReasoningService<PatientAnalyzeRagRequest, MedicalAnalyzingLLmResponse>
 {
 }
