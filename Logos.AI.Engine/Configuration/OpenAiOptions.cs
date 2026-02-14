@@ -5,7 +5,8 @@ public record OpenAiOptions
 	public const string SectionName = "OpenAI";
 	public string Model { get; init; } = "gpt-4o";
 	public string ApiKey { get; init; } = string.Empty;
-	public LlmOptions MedicalAnalyzing { get; init; } = new();
+	public LlmOptions ReasoningMedicalAnalyzing { get; init; } = new();
+	public LlmOptions NonReasoningMedicalAnalyzing { get; init; } = new();
 	public LlmOptions MedicalContext { get; init; } = new();
 	public LlmOptions MedicalRelevance { get; init; } = new();
 	public EmbeddingOptions Embedding { get; init; } = new();

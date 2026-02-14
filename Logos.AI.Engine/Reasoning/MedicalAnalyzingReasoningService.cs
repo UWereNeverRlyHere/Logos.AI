@@ -13,17 +13,18 @@ public class MedicalAnalyzingReasoningService(
 	IOptionsSnapshot<OpenAiOptions>           options,
 	ILogger<MedicalAnalyzingReasoningService> logger) : IMedicalAnalyzingReasoningService
 {
-	private readonly LlmOptions _options = options.Value.MedicalAnalyzing;
+	private readonly LlmOptions _reasoningPptions = options.Value.ReasoningMedicalAnalyzing;
+	private readonly LlmOptions _nonReasoningOptions = options.Value.NonReasoningMedicalAnalyzing;
 
 	public async Task<ReasoningResult<MedicalAnalyzingLLmResponse>> AnalyzeAsync(AugmentedPatientAnalyze request, CancellationToken ct = default)
 	{
 		try
 		{
 			logger.LogInformation("Sending request to LLM for Clinical Reasoning (Structured Output)...");
-
+			var opt = request.PreliminaryDiagnosticHypothesis.RequiresComplexAnalysis ? _reasoningPptions : _nonReasoningOptions;
 			var reqData = new LlmRequestDto
 			{
-				LlmOptions = _options,
+				LlmOptions = opt,
 				Content = request,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_analysis",

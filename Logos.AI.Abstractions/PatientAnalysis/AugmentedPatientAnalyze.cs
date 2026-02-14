@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Text.Json.Serialization;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
 
@@ -10,7 +11,7 @@ public record AugmentedPatientAnalyze
     public required PatientAnalyzeRagRequest PatientAnalyzeData { get; init; } 
     
     [Description("Попередній (можливий) діагноз пацієнта")]
-    public required MedicalContextLlmResponse PreliminaryDiagnosticHypothesis { get; init; }
+    public required PreliminaryHypothesisDto PreliminaryDiagnosticHypothesis { get; init; }
     
     [Description("Результати пошуку релевантного контексту для пацієнта")]
     public required ICollection<ContextRetrievalDto> RetrievalResults { get; init; }
@@ -58,4 +59,33 @@ public record ContextChunkDto
     
     [Description("Оцінка релевантності (схожості) знайденого фрагмента (від 0 до 1)")]
     public required float Score { get; init; }
+}
+
+/// <summary>
+/// Очищена версія гіпотези для подачі в LLM (без технічних прапорців типу RequiresComplexAnalysis).
+/// </summary>
+public record PreliminaryHypothesisDto
+{
+
+    [Description("Попередній висновок/причина")]
+    public required string Reason { get; init; }
+
+    [Description("Пошукові запити, що використовувалися")]
+    public required List<string> Queries { get; init; }
+
+    [Description("Ланцюжок думок (Thinking Process)")]
+    public string? ThinkingScratchpad { get; init; }
+    [JsonIgnore] 
+    public bool RequiresComplexAnalysis { get; init; }
+
+    public static PreliminaryHypothesisDto FromResponse(MedicalContextLlmResponse fullResponse)
+    {
+        return new PreliminaryHypothesisDto
+        {
+            Reason = fullResponse.Reason,
+            Queries = fullResponse.Queries,
+            ThinkingScratchpad = fullResponse.ThinkingScratchpad,
+            RequiresComplexAnalysis = fullResponse.RequiresComplexAnalysis
+        };
+    }
 }
