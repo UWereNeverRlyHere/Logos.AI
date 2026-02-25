@@ -42,7 +42,7 @@ public class MedicalContextReasoningService(
 			logger.LogError(ex, "Error during Medical Context Analysis");
 			throw new ReasoningException("Failed to analyze medical context due to an AI service error.", ex);		}
 	}
-	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(PatientAnalyzeRagRequest request, CancellationToken ct = default)
+	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(PatientAnalyzeLLMRequest request, CancellationToken ct = default)
 	{
 		return await AnalyzeAsync(request.SerializeToJson(), ct);
 	}

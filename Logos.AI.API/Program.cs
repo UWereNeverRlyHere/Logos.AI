@@ -39,7 +39,7 @@ using (var scope = app.Services.CreateScope())
 	await dbContext.Database.MigrateAsync();
 	await dbContext.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
 	var qdrantService = scope.ServiceProvider.GetRequiredService<IVectorStorageService>();
+	//await qdrantService.RecreateCollectionAsync();
 	await qdrantService.EnsureCollectionAsync();
-	//wait qdrantService.RecreateCollectionAsync();
 }
 await app.RunAsync();

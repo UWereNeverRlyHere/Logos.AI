@@ -27,7 +27,7 @@ public class RagOrchestrator(
 		// 3. Сборка DTO (вся логика маппинга скрыта внутри DTO)
 		var augmentedData = new AugmentedPatientAnalyze
 		{
-			PatientAnalyzeData = request,
+			PatientAnalyzeData = new PatientAnalyzeLLMRequest(request),
 			PreliminaryDiagnosticHypothesis = PreliminaryHypothesisDto.FromResponse(augmentationRes.PreliminaryDiagnosticHypothesis),
 			RetrievalResults = ContextRetrievalDto.CreateFromRetrievalResults(augmentationRes.RetrievalResults)
 		};

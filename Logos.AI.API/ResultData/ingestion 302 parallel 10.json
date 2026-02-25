@@ -1,0 +1,4 @@
+﻿{
+  "code": "InternalServerError",
+  "message": "An internal server error occurred: HTTP 429 (tokens: rate_limit_exceeded)\r\n\r\nRate limit reached for text-embedding-3-small in organization org-XOZAmpq3KqESCN1blEZpEGDc on tokens per min (TPM): Limit 1000000, Used 1000000, Requested 11568. Please try again in 694ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+}

@@ -14,6 +14,7 @@ INPUT DATA:
 INSTRUCTIONS (STEP-BY-STEP):
 
 1. DATA VERIFICATION:
+   - КАТЕГОРИЧНО ЗАБОРОНЕНО: самостійно порівнювати числа або вираховувати норми У ВХІДНИХ ДАНИХ ПАЦІЄНТА. Довіряй виключно полям "isOutOfRange" та "deviationPercentage".
    - Співстав <PRELIMINARY_HYPOTHESIS> з <PATIENT_DATA>.
    - Якщо вхідні дані (RequiresComplexAnalysis = false) і всі показники в нормі -> Переходь у режим "Healthy Report".
 

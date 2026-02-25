@@ -11,7 +11,7 @@ public interface IReasoningService<in TRequest, TResponse>
 }
 
 // Конкретний інтерфейс для Medical Context
-public interface IMedicalContextReasoningService : IReasoningService<PatientAnalyzeRagRequest, MedicalContextLlmResponse>
+public interface IMedicalContextReasoningService : IReasoningService<PatientAnalyzeLLMRequest, MedicalContextLlmResponse>
 {
 	Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string                    request,         CancellationToken ct = default);
 	Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default);

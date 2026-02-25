@@ -23,7 +23,7 @@ public class RetrievalAugmentationService(
 		logger.LogInformation("Starting retrieval augmentation for patient analysis request");
 		// 1. Аналіз медичного контексту запиту
 		logger.LogDebug("Step 1: Analyzing medical context...");
-		var medicalContext = await contextReasoningService.AnalyzeAsync(request, ct);
+		var medicalContext = await contextReasoningService.AnalyzeAsync(new PatientAnalyzeLLMRequest(request), ct);
 		if (!medicalContext.Data.IsMedical)
 		{
 			logger.LogWarning("Request identified as non-medical. Aborting augmentation");
@@ -33,7 +33,7 @@ public class RetrievalAugmentationService(
 		// 2. Валідація впевненості моделі в аналізі контексту
 		logger.LogDebug("Step 2: Validating LLM confidence for medical context...");
 		var validationRes = await confidenceValidator.ValidateAsync(medicalContext);
-		if (!validationRes.IsValid)
+		if (!validationRes.IsValid )
 		{
 			logger.LogWarning("Confidence validation failed (Score: {Score:F2}, Level: {Level}). Aborting augmentation", 
 				validationRes.Score, validationRes.ConfidenceLevel);

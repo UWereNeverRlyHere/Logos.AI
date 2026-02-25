@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Logos.AI.Abstractions.Common;
+using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.Reasoning;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -65,7 +66,7 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Error inside LlmClientWrapper");
-			throw;
+			throw new ReasoningException("Error inside LlmClientWrapper", ex);
 		}
 	}
 

@@ -8,7 +8,7 @@ namespace Logos.AI.Abstractions.PatientAnalysis;
 public record AugmentedPatientAnalyze
 {
     [Description("Дані для аналізу пацієнта")]
-    public required PatientAnalyzeRagRequest PatientAnalyzeData { get; init; } 
+    public required PatientAnalyzeLLMRequest PatientAnalyzeData { get; init; } 
     
     [Description("Попередній (можливий) діагноз пацієнта")]
     public required PreliminaryHypothesisDto PreliminaryDiagnosticHypothesis { get; init; }
