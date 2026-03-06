@@ -20,57 +20,65 @@ public record NumericIndicator
 {
 	public string Name { get; init; }
 
-	public double Value { get; init; }
+	public double? NumValue { get; init; }
+	public string? TextValue { get; init; }
 
 	public string? Unit { get; init; }
 
 	public string? Accuracy { get; init; }
 
-	public bool IsOutOfRange { get; init; }
-	public double DeviationPercentage { get; init; }
-	public string DeviationType { get; init; }
-	
+	public bool? IsOutOfRange { get; init; }
+	public double? DeviationPercentage { get; init; }
+	public string? DeviationType { get; init; }
+
 	public NumericIndicator(Indicator indicator)
 	{
 		Name = indicator.Name;
 		var normalizedValue = indicator.Value.Trim().Replace(',', '.');
-		Value = double.Parse(normalizedValue, System.Globalization.NumberStyles.Any, 
-			System.Globalization.CultureInfo.InvariantCulture);
+		if (!double.TryParse(normalizedValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var numValue))
+		{
+			TextValue = indicator.Value;
+			if (indicator.ReferenceRange != null)
+				IsOutOfRange = indicator.Value.Equals(indicator.ReferenceRange, StringComparison.OrdinalIgnoreCase);
+			return;
+		}
+		NumValue = numValue;
+
 		Unit = indicator.Unit;
 		Accuracy = indicator.Accuracy;
 
 		// Парсинг референсного диапазона
-		if (!string.IsNullOrWhiteSpace(indicator.ReferenceRange) && 
+		if (!string.IsNullOrWhiteSpace(indicator.ReferenceRange) &&
 			TryParseRange(indicator.ReferenceRange.Trim().Replace(",", "."), out var min, out var max))
 		{
 			// Проверка выхода за пределы нормы
-			IsOutOfRange = Value < min || Value > max;
+			IsOutOfRange = NumValue < min || NumValue > max;
 
-			if (!IsOutOfRange)
+			if ((bool)(!IsOutOfRange)!)
 			{
 				// Значение в норме
 				DeviationType = "None";
 				DeviationPercentage = 0;
 			}
-			else if (Value < min)
+			else if (NumValue < min)
 			{
 				// Ниже нормы
 				DeviationType = "Lower";
-				DeviationPercentage = Math.Round(Math.Abs((Value - min) / min * 100), 2);
+				DeviationPercentage = Math.Round(Math.Abs((double)((NumValue - min) / min * 100)), 2);
 			}
 			else
 			{
 				// Выше нормы
 				DeviationType = "Upper";
-				DeviationPercentage = Math.Round(Math.Abs((Value - max) / max * 100), 2);
+				DeviationPercentage = Math.Round(Math.Abs((double)((NumValue - max) / max * 100)!), 2);
 			}
 		}
 		else
 		{
 			// Если диапазон не распознан
-			IsOutOfRange = false;
-			DeviationType = "None";
-			DeviationPercentage = 0;
+			IsOutOfRange = null;
+			DeviationType = null;
+			DeviationPercentage = null;
 		}
 	}
 
@@ -78,12 +86,15 @@ public record NumericIndicator
 	{
 		min = max = 0;
 
-		var parts = range.Split(new[] { '-', '–', '—' }, StringSplitOptions.RemoveEmptyEntries);
-		
+		var parts = range.Split(new[]
+		{
+			'-', '–', '—'
+		}, StringSplitOptions.RemoveEmptyEntries);
+
 		if (parts.Length == 2 &&
-			double.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Any, 
+			double.TryParse(parts[0].Trim(), System.Globalization.NumberStyles.Any,
 				System.Globalization.CultureInfo.InvariantCulture, out min) &&
-			double.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Any, 
+			double.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.Any,
 				System.Globalization.CultureInfo.InvariantCulture, out max))
 		{
 			return true;
