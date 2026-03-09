@@ -19,8 +19,4 @@
       <ProjectReference Include="..\Logos.AI.Engine\Logos.AI.Engine.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="PatientAnalyzeData\" />
-    </ItemGroup>
-
 </Project>

@@ -8,7 +8,7 @@ namespace Logos.AI.Engine.Extensions;
 public static class LogosJsonExtensions
 {
     // Кешуємо опції, щоб не створювати їх щоразу (Performance boost)
-    private static readonly JsonSerializerOptions IndentedOptions = CreateDefaultOptions();
+    public static readonly JsonSerializerOptions IndentedOptions = CreateDefaultOptions();
     // Для отправки в LLM (без отступов - экономия токенов)
     public static readonly JsonSerializerOptions CompactOptions = CreateDefaultOptions(indented: false);
     private static JsonSerializerOptions CreateDefaultOptions(bool indented = true)

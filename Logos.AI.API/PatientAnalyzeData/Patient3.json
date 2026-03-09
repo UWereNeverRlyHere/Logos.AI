@@ -1,0 +1,74 @@
+﻿{
+  "Patient": {
+    "DateOfBirth": "1954-01-09T00:00:00",
+    "Gender": "Male"
+  },
+  "Analyses": [
+    {
+      "Name": "Електроліти крові",
+      "Date": "2026-01-19T00:00:00",
+      "Indicators": [
+        {
+          "Name": "Калій (К)",
+          "Value": 4.9,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "3.5-5.5"
+        },
+        {
+          "Name": "Натрій (Na)",
+          "Value": 141.0,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "136-145"
+        }
+      ]
+    },
+    {
+      "Name": "Пакет №43 «Ліпідограма»",
+      "Date": "2026-01-19T00:00:00",
+      "Indicators": [
+        {
+          "Name": "Холестерин",
+          "Value": 6.94,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "0-5.17"
+        },
+        {
+          "Name": "Тригліцериди",
+          "Value": 1.63,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "0.5-1.7"
+        },
+        {
+          "Name": "ЛП високої щільності",
+          "Value": 1.27,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "0-1.45"
+        },
+        {
+          "Name": "ЛП низької щільності",
+          "Value": 4.37,
+          "Unit": "ммоль/л",
+          "ReferenceRange": "0-3"
+        },
+        {
+          "Name": "Коєфіцієнт атерогеності",
+          "Value": 3.68,
+          "Unit": "Од",
+          "ReferenceRange": "0.01-3.0"
+        }
+      ]
+    },
+    {
+      "Name": "Коагулограма",
+      "Date": "2026-01-19T00:00:00",
+      "Indicators": [
+        {
+          "Name": "Фібриноген по Клаусу",
+          "Value": 5.52,
+          "Unit": "g/L",
+          "ReferenceRange": "2.0-4.0"
+        }
+      ]
+    }
+  ]
+}

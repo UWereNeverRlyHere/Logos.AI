@@ -1,9 +1,11 @@
 ﻿using System.Text;
+using System.Text.Json;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Abstractions.Knowledge.Retrieval;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
+using Logos.AI.Engine.Extensions;
 using Logos.AI.Engine.RAG;
 using Microsoft.AspNetCore.Mvc;
 namespace Logos.AI.API.Controllers;
@@ -34,6 +36,49 @@ public class RagController(
 		// Повертаємо пустий список результатів, щоб View не ламалася
 		return View("Index", new List<KnowledgeChunk>());
 	}
+	
+	// GET: rag/testExamples
+	[HttpGet("testExamples")]
+	public IActionResult TestExamples()
+	{
+		return View();
+	}
+
+	// POST: rag/analyzeTestPatient/{patientId}
+	[HttpPost("analyzeTestPatient/{patientId}")]
+	public async Task<IActionResult> AnalyzeTestPatient(string patientId)
+	{
+		try
+		{
+			// Формуємо шлях до папки PatientAnalyzeData
+			var filePath = Path.Combine(Directory.GetCurrentDirectory(), "PatientAnalyzeData", $"{patientId}.json");
+			
+			if (!System.IO.File.Exists(filePath))
+			{
+				return NotFound(new { error = $"File not found: {filePath}" });
+			}
+
+			// Читаємо JSON файл
+			var jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
+			var options = LogosJsonExtensions.IndentedOptions;
+			// Десеріалізуємо у запит
+			var reqData = JsonSerializer.Deserialize<PatientAnalyzeRagRequest>(jsonContent, options);
+
+			if (reqData == null) 
+				return BadRequest(new { error = "Invalid JSON format." });
+
+			// Запускаємо оркестратор
+			var processedContext = await orchestrator.GenerateResponseAsync(reqData);
+			
+			return Ok(processedContext);
+		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { error = ex.Message });
+		}
+	}
+	
+	
 	[HttpPost("testAugmentation")]
 	public async Task<IActionResult> TestAugmentation([FromBody] PatientAnalyzeRagRequest reqData)
 	{
@@ -130,126 +175,74 @@ public class RagController(
 	}*/
 	// POST: rag/search
 	[HttpPost("search")]
-	public async Task<IActionResult> Search(string query)
+	public async Task<IActionResult> SearchContext([FromForm] string question)
 	{
-		if (string.IsNullOrWhiteSpace(query))
-		{
-			return RedirectToAction("Index");
-		}
+		if (string.IsNullOrWhiteSpace(question))
+			return BadRequest(new { error = "Введіть пошуковий запит." });
+
 		try
 		{
-			// 1. Виконуємо пошук через RagQueryService
-			var searchResults = await retrievalAugmentationService.RetrieveContextAsync(new[] { query });
-			var results = searchResults.SelectMany(r => r.FoundChunks).ToList();
-			// 2. Форматуємо результати для відображення (так як немає LLM генерації)
-			if (results.Count > 0)
-			{
-				var sb = new StringBuilder();
-				sb.AppendLine($"Found {results.Count} relevant fragments:\n");
+			// Розбиваємо запит по комах, якщо користувач ввів декілька фраз
+			// Наприклад: "Гіпертонія, цукровий діабет" -> ["Гіпертонія", "цукровий діабет"]
+			var queries = question.Split(',')
+				.Select(q => q.Trim())
+				.Where(q => !string.IsNullOrWhiteSpace(q))
+				.ToList();
 
-				foreach (var item in results)
-				{
-					sb.AppendLine($"--- Page {item.PageNumber} (Score: {item.Score:F2}) ---");
-					sb.AppendLine(item.Content);
-					sb.AppendLine(); // Пустий рядок між фрагментами
-				}
-
-				ViewBag.Answer = sb.ToString();
-				ViewBag.SourceDocuments = string.Join(", ", results.Select(r => r.DocumentTitle).Distinct());
-			}
-			else
-			{
-				ViewBag.Answer = "No relevant information found in the knowledge base.";
-			}
-			// 3. Оновлюємо список документів для сайдбару
-			var docs = await storageService.GetAllDocumentsAsync();
-			ViewBag.AllDocuments = docs;
-			return View("Index", results);
+			// Викликаємо метод пошуку нашого сервісу
+			var results = await retrievalAugmentationService.RetrieveContextAsync(queries);
+			
+			// Повертаємо масив RetrievalResult у JSON
+			return Ok(results);
 		}
 		catch (Exception ex)
 		{
-			ViewBag.Message = $"Error during search: {ex.Message}";
-			var docs = await storageService.GetAllDocumentsAsync();
-			ViewBag.AllDocuments = docs;
-			return View("Index", new List<KnowledgeChunk>());
+			return StatusCode(500, new { error = $"Search Error: {ex.Message}" });
 		}
 	}
-
 	// Зберігаємо старий метод Query для сумісності, якщо він десь викликається
 	[HttpPost("query")]
 	public async Task<IActionResult> Query(string question)
 	{
-		return await Search(question);
+		return await SearchContext(question);
 	}
 
 	// POST: rag/upload
 	[HttpPost("upload")]
-	public async Task<IActionResult> Upload(List<IFormFile> files, string uploadMode)
+	[DisableRequestSizeLimit] // Знімає обмеження на розмір папки (28.6 МБ)
+	[RequestFormLimits(ValueLengthLimit = int.MaxValue, MultipartBodyLengthLimit = int.MaxValue)] // Дозволяє великі multipart дані
+	public async Task<IActionResult> Upload(List<IFormFile> files)
 	{
 		if (files == null || files.Count == 0)
-		{
-			ViewBag.Message = "Please select at least one PDF file.";
-			return await Index();
-		}
+			return BadRequest(new { error = "Please select at least one PDF file." });
 
-		// Фильтруем только PDF
+		// Фільтруємо тільки PDF
 		var pdfFiles = files.Where(f => Path.GetExtension(f.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
 		if (pdfFiles.Count == 0)
-		{
-			ViewBag.Message = "No PDF files found in the selection.";
-			return await Index();
-		}
+			return BadRequest(new { error = "No PDF files found in the selection." });
 
 		try
 		{
-			// 1. Зберігаємо файли фізично
 			var uploadDataList = new List<IngestionUploadDto>();
 			foreach (var file in pdfFiles)
 			{
-				// Генеруємо унікальне ім'я файлу
+				// Читаємо файл у пам'ять
 				using var ms = new MemoryStream();
 				await file.CopyToAsync(ms);
 				var fileBytes = ms.ToArray();
-				// Используем основной конструктор
+				
 				uploadDataList.Add(new IngestionUploadDto(fileBytes, file.FileName));
 			}
 
-			if (uploadMode == "folder")
-			{
-				var results = await ingestionService.IngestFilesAsync(uploadDataList);
-				var success = results.GetSuccess();
-				if (success.Any())
-				{
-					return Ok(new
-					{
-						message = $"Uploaded {results.TotalDocuments} files from folder",
-						chunks = results.ChunksCount
-					});
-				}
-				
-				return BadRequest(string.Join("; ", results.GetFail().Select(r => r.Message)));
-			}
-			// Випадок одного файлу (або якщо вибрано режим file, беремо перший PDF)
-			var res = await ingestionService.IngestFileAsync(uploadDataList[0]);
-
-			if (res.IsSuccess)
-				return Ok(new
-				{
-					message = $"Uploaded {pdfFiles[0].FileName}",
-					chunks = res.ChunksCount
-				});
-			return BadRequest(res.Message);
+			// Запускаємо масове паралельне завантаження (Bulk Ingestion)
+			var results = await ingestionService.IngestFilesAsync(uploadDataList);
+			
+			// Повертаємо весь об'єкт BulkIngestionResult у форматі JSON
+			return Ok(results);
 		}
 		catch (Exception ex)
 		{
-			// Логування помилки
-			ViewBag.Message = $"Error: {ex.Message}";
+			return StatusCode(500, new { error = $"Server Error: {ex.Message}" });
 		}
-
-		// Оновлюємо список документів і повертаємо View
-		var finalDocs = await storageService.GetAllDocumentsAsync();
-		ViewBag.AllDocuments = finalDocs;
-
-		return View("Index", new List<KnowledgeChunk>());
 	}
 }
