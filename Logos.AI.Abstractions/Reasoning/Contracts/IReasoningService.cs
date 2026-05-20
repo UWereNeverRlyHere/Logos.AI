@@ -1,4 +1,5 @@
-﻿using Logos.AI.Abstractions.PatientAnalysis;
+﻿using Logos.AI.Abstractions.Common;
+using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 namespace Logos.AI.Abstractions.Reasoning.Contracts;
 
@@ -27,17 +28,19 @@ public interface IMedicalContextReasoningService : IReasoningService<PatientAnal
 	/// Аналізує текстовий запит для визначення медичного контексту.
 	/// </summary>
 	/// <param name="request">Текстовий опис або запит.</param>
+	/// <param name="language">Мова, якою має бути сформована відповідь LLM ("uk" / "en").</param>
 	/// <param name="ct">Токен скасування операції.</param>
 	/// <returns>Результат аналізу медичного контексту.</returns>
-	Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string                    request,         CancellationToken ct = default);
+	Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string request, string language = SupportedLanguages.Default, CancellationToken ct = default);
 
 	/// <summary>
 	/// Оцінює релевантність отриманих даних із бази знань (RAG) відносно запиту.
 	/// </summary>
 	/// <param name="retrievalResult">Результати пошуку в базі знань.</param>
+	/// <param name="language">Мова, якою має бути сформована відповідь LLM ("uk" / "en").</param>
 	/// <param name="ct">Токен скасування операції.</param>
 	/// <returns>Результат оцінки релевантності.</returns>
-	Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default);
+	Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, string language = SupportedLanguages.Default, CancellationToken ct = default);
 }
 
 /// <summary>

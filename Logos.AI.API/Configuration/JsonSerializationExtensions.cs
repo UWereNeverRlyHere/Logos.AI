@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Logos.AI.Engine.Extensions;
+﻿using Logos.AI.Engine.Extensions;
 
 namespace Logos.AI.API.Configuration;
 

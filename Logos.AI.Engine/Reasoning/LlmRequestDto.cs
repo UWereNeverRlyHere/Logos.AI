@@ -1,4 +1,5 @@
-﻿using Logos.AI.Engine.Configuration;
+﻿using Logos.AI.Abstractions.Common;
+using Logos.AI.Engine.Configuration;
 using Logos.AI.Engine.Extensions;
 using OpenAI.Chat;
 namespace Logos.AI.Engine.Reasoning;
@@ -7,7 +8,12 @@ public record LlmRequestDto
 {
 	public required LlmOptions LlmOptions { get; init; }
 	public required ChatResponseFormat ResponseFormat { get; init; }
-    
+
+	/// <summary>
+	/// Мова відповіді LLM. Визначає, який файл промта (PromptFile / PromptFileEn) буде завантажено.
+	/// </summary>
+	public string Language { get; init; } = SupportedLanguages.Default;
+
 	// Это свойство для чтения результата
 	public string UserMessageJsonContent { get; private set; } = string.Empty;
 

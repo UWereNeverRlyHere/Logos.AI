@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewBag.Title = "RAG Search";
 }
 
@@ -13,14 +13,14 @@
 </style>
 
 <div class="container py-5">
-    <h2 class="text-center mb-4">🔍 RAG Search Portal in .NET</h2>
-    <h5 class="text-center mb-4 text-muted">[.NET 9, OpenAI Embedding, Qdrant Vector DB, Semantic Search, Data Source - PDF]</h5>
+    <h2 class="text-center mb-4" data-i18n="rag.heading">🔍 RAG-портал пошуку на .NET</h2>
+    <h5 class="text-center mb-4 text-muted" data-i18n="rag.subheading">[.NET 9, OpenAI Embedding, Qdrant Vector DB, Semantичний пошук, Джерело — PDF]</h5>
     <hr />
 
     <div class="row">
         <div class="col-md-3">
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">📚 Indexed Sources</div>
+                <div class="card-header bg-info text-white" data-i18n="rag.sources.header">📚 Проіндексовані джерела</div>
                 <ul class="list-group list-group-flush" id="indexed-sources-list">
                     @if (ViewBag.AllDocuments != null && ViewBag.AllDocuments.Count > 0)
                     {
@@ -35,33 +35,33 @@
                     }
                     else
                     {
-                        <li class="list-group-item text-muted">No documents indexed yet.</li>
+                        <li class="list-group-item text-muted" data-i18n="rag.sources.empty">Документи ще не проіндексовано.</li>
                     }
                 </ul>
             </div>
         </div>
 
         <div class="col-md-9">
-            
+
             <div class="card shadow-sm mb-4 border-success">
-                <div class="card-header bg-success text-white">📤 Upload Knowledge Base (Folder)</div>
+                <div class="card-header bg-success text-white" data-i18n="rag.upload.header">📤 Завантаження бази знань (папка)</div>
                 <div class="card-body">
                     <form id="uploadForm" onsubmit="uploadFiles(event)">
                         <div class="mb-3">
-                            <label class="form-label text-muted">Оберіть папку, що містить PDF-протоколи або статті. Система автоматично відкине файли інших форматів, розіб'є PDF на чанки та векторизує їх у Qdrant.</label>
-    
+                            <label class="form-label text-muted" data-i18n="rag.upload.hint">Оберіть папку, що містить PDF-протоколи або статті. Система автоматично відкине файли інших форматів, розіб'є PDF на чанки та векторизує їх у Qdrant.</label>
+
                             <div class="input-group">
                                 <label class="btn btn-outline-primary mb-0" for="fileInput" style="cursor: pointer;">
-                                    <i class="bi bi-folder2-open"></i> Choose Folder
+                                    <i class="bi bi-folder2-open"></i> <span data-i18n="rag.upload.chooseFolder">Обрати папку</span>
                                 </label>
-        
-                                <input type="text" id="fileDisplay" class="form-control bg-white" placeholder="No folder chosen..." readonly onclick="document.getElementById('fileInput').click();" style="cursor: pointer;">
-        
+
+                                <input type="text" id="fileDisplay" class="form-control bg-white" data-i18n-placeholder="rag.upload.noFolder" placeholder="Папку не обрано..." readonly onclick="document.getElementById('fileInput').click();" style="cursor: pointer;">
+
                                 <input type="file" id="fileInput" name="files" accept=".pdf" webkitdirectory directory multiple required style="display: none;" onchange="updateFileDisplay(this)" />
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success w-100" id="uploadBtn">
-                            <i class="bi bi-cloud-arrow-up-fill"></i> Upload & Index
+                            <i class="bi bi-cloud-arrow-up-fill"></i> <span data-i18n="rag.upload.button">Завантажити та індексувати</span>
                         </button>
                     </form>
                 </div>
@@ -69,31 +69,31 @@
 
             <div id="loader-section" class="text-center my-4" style="display: none;">
                 <div class="spinner-border text-success" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                    <span class="visually-hidden" data-i18n="common.loading">Завантаження...</span>
                 </div>
-                <h5 class="mt-3 text-secondary">ШІ читає документи, б'є на чанки та генерує ембеддінги...</h5>
-                <h5 class="text-success fw-bold">Час очікування: <span id="timer">0</span> сек</h5>
+                <h5 class="mt-3 text-secondary" data-i18n="rag.upload.loaderMessage">ШІ читає документи, б'є на чанки та генерує ембеддінги...</h5>
+                <h5 class="text-success fw-bold"><span data-i18n="common.waitTime">Час очікування:</span> <span id="timer">0</span> <span data-i18n="common.seconds">сек</span></h5>
             </div>
 
             <div id="upload-result-container" class="mb-4"></div>
 
             <div class="card shadow-sm mb-4 border-dark">
-                <div class="card-header bg-dark text-white">🔎 Semantic Search in Vector DB</div>
+                <div class="card-header bg-dark text-white" data-i18n="rag.search.header">🔎 Семантичний пошук у векторній БД</div>
                 <div class="card-body">
                     <form id="searchForm" onsubmit="performSearch(event)">
                         <div class="input-group mb-3">
-                            <input type="text" id="searchQuery" name="question" class="form-control form-control-lg" placeholder="Введіть фразу або декілька через кому (напр. Гіпертонія, Аспірин)..." required />
+                            <input type="text" id="searchQuery" name="question" class="form-control form-control-lg" data-i18n-placeholder="rag.search.placeholder" placeholder="Введіть фразу або декілька через кому (напр. Гіпертонія, Аспірин)..." required />
                             <button type="submit" class="btn btn-primary px-4" id="searchBtn">
-                                <i class="bi bi-search"></i> Search
+                                <i class="bi bi-search"></i> <span data-i18n="rag.search.button">Пошук</span>
                             </button>
                         </div>
                     </form>
 
                     <div id="search-loader" class="text-center my-4" style="display: none;">
                         <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                            <span class="visually-hidden" data-i18n="common.loading">Завантаження...</span>
                         </div>
-                        <h6 class="text-primary mt-2">Виконується пошук по векторній базі Qdrant...</h6>
+                        <h6 class="text-primary mt-2" data-i18n="rag.search.loader">Виконується пошук по векторній базі Qdrant...</h6>
                     </div>
 
                     <div id="search-result-container"></div>
@@ -107,12 +107,18 @@
 <script>
     let timerInterval;
     let secondsPassed = 0;
+    // Стан результатів — щоб перемалювати при зміні мови
+    let lastUploadData = null;
+    let lastSearchResults = null;
+
+    const i18n = () => (window.Logos && window.Logos.i18n) ? window.Logos.i18n : { t: function (k) { return k; } };
+    const tt = (k) => i18n().t(k);
 
     function startTimer() {
         secondsPassed = 0;
         document.getElementById('timer').innerText = secondsPassed;
         document.getElementById('loader-section').style.display = 'block';
-        document.getElementById('upload-result-container').innerHTML = ''; // Очищаємо старий результат
+        document.getElementById('upload-result-container').innerHTML = '';
         document.getElementById('uploadBtn').disabled = true;
 
         timerInterval = setInterval(() => {
@@ -128,11 +134,11 @@
     }
 
     async function uploadFiles(event) {
-        event.preventDefault(); // Зупиняємо стандартну поведінку форми (перезавантаження сторінки)
+        event.preventDefault();
 
         const fileInput = document.getElementById('fileInput');
         if (fileInput.files.length === 0) {
-            alert("Оберіть папку з PDF файлами.");
+            alert(tt("rag.upload.alertChooseFolder"));
             return;
         }
 
@@ -153,22 +159,22 @@
             stopTimer();
 
             if (response.ok) {
+                lastUploadData = data;
                 renderUploadResult(data);
-                refreshSidebar(); // Фонове оновлення меню зліва!
-                fileInput.value = ""; // Очищаємо інпут
+                refreshSidebar();
+                fileInput.value = "";
                 document.getElementById('fileDisplay').value = "";
             } else {
-                document.getElementById('upload-result-container').innerHTML = 
-                    `<div class="alert alert-danger"><strong>Помилка:</strong> ${data.error || 'Unknown error'}</div>`;
+                document.getElementById('upload-result-container').innerHTML =
+                    `<div class="alert alert-danger"><strong>${tt("common.error")}</strong> ${data.error || tt("common.unknownError")}</div>`;
             }
         } catch (error) {
             stopTimer();
-            document.getElementById('upload-result-container').innerHTML = 
-                `<div class="alert alert-danger"><strong>Network Error:</strong> ${error.message}</div>`;
+            document.getElementById('upload-result-container').innerHTML =
+                `<div class="alert alert-danger"><strong>${tt("common.networkError")}</strong> ${error.message}</div>`;
         }
     }
 
-    // Фонове оновлення списку документів
     async function refreshSidebar() {
         try {
             const response = await fetch('/rag/documents');
@@ -176,9 +182,9 @@
                 const docs = await response.json();
                 const list = document.getElementById('indexed-sources-list');
                 list.innerHTML = '';
-                
+
                 if (docs.length === 0) {
-                    list.innerHTML = '<li class="list-group-item text-muted">No documents indexed yet.</li>';
+                    list.innerHTML = `<li class="list-group-item text-muted" data-i18n="rag.sources.empty">${tt("rag.sources.empty")}</li>`;
                 } else {
                     docs.forEach(doc => {
                         list.innerHTML += `<li class="list-group-item">
@@ -192,14 +198,16 @@
             console.error("Failed to refresh sidebar", e);
         }
     }
+
     function updateFileDisplay(input) {
         const display = document.getElementById('fileDisplay');
         if (input.files && input.files.length > 0) {
-            display.value = `Selected files: ${input.files.length}`;
+            display.value = `${tt("rag.upload.selectedFiles")} ${input.files.length}`;
         } else {
             display.value = '';
         }
     }
+
     async function performSearch(event) {
         event.preventDefault();
 
@@ -210,7 +218,6 @@
         const loader = document.getElementById('search-loader');
         const container = document.getElementById('search-result-container');
 
-        // Блокуємо кнопку та показуємо спінер
         btn.disabled = true;
         loader.style.display = 'block';
         container.innerHTML = '';
@@ -227,14 +234,14 @@
             const data = await response.json();
 
             if (response.ok) {
+                lastSearchResults = data;
                 renderSearchResult(data);
             } else {
-                container.innerHTML = `<div class="alert alert-danger"><strong>Помилка:</strong> ${data.error || 'Unknown error'}</div>`;
+                container.innerHTML = `<div class="alert alert-danger"><strong>${tt("common.error")}</strong> ${data.error || tt("common.unknownError")}</div>`;
             }
         } catch (error) {
-            container.innerHTML = `<div class="alert alert-danger"><strong>Network Error:</strong> ${error.message}</div>`;
+            container.innerHTML = `<div class="alert alert-danger"><strong>${tt("common.networkError")}</strong> ${error.message}</div>`;
         } finally {
-            // Розблоковуємо інтерфейс
             btn.disabled = false;
             loader.style.display = 'none';
         }
@@ -242,46 +249,43 @@
 
     function renderSearchResult(results) {
         if (!results || results.length === 0) {
-            document.getElementById('search-result-container').innerHTML = '<div class="alert alert-warning">Нічого не знайдено.</div>';
+            document.getElementById('search-result-container').innerHTML = `<div class="alert alert-warning">${tt("rag.search.nothingFound")}</div>`;
             return;
         }
 
         let html = '';
 
-        // Проходимось по кожному запиту (якщо користувач ввів через кому декілька)
         results.forEach(res => {
             html += `<div class="card mb-4 border-info shadow-sm">
                         <div class="card-header bg-info text-dark d-flex justify-content-between align-items-center fw-bold">
-                            <span><i class="bi bi-search"></i> Запит: "${res.query}"</span>
-                            <span class="badge bg-light text-dark border">Середній Score: ${res.averageScore.toFixed(3)} | Чанків: ${res.totalChunksFound} | Час: ${res.durationSeconds.toFixed(2)}с</span>
+                            <span><i class="bi bi-search"></i> ${tt("rag.search.queryLabel")} "${res.query}"</span>
+                            <span class="badge bg-light text-dark border">${tt("rag.search.avgScore")} ${res.averageScore.toFixed(3)} | ${tt("rag.search.chunksCount")} ${res.totalChunksFound} | ${tt("rag.search.time")} ${res.durationSeconds.toFixed(2)}${tt("common.seconds")}</span>
                         </div>
                         <div class="card-body bg-light p-3">`;
 
             if (res.foundChunks && res.foundChunks.length > 0) {
                 html += `<div class="list-group">`;
 
-                // Проходимось по знайдених фрагментах тексту (чанках)
                 res.foundChunks.forEach(chunk => {
-                    // Колір бейджа залежить від впевненості (Score)
                     let badgeClass = chunk.score > 0.8 ? 'bg-success' : (chunk.score > 0.7 ? 'bg-warning text-dark' : 'bg-secondary');
 
                     html += `
                         <div class="list-group-item list-group-item-action flex-column align-items-start mb-2 shadow-sm border rounded">
                             <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0 text-primary fw-bold"><i class="bi bi-file-earmark-medical"></i> ${chunk.documentTitle || 'Невідомий документ'}</h6>
-                                <span class="badge ${badgeClass} fs-6">Score: ${chunk.score.toFixed(3)}</span>
+                                <h6 class="mb-0 text-primary fw-bold"><i class="bi bi-file-earmark-medical"></i> ${chunk.documentTitle || tt("rag.search.unknownDoc")}</h6>
+                                <span class="badge ${badgeClass} fs-6">${tt("rag.search.score")} ${chunk.score.toFixed(3)}</span>
                             </div>
                             <p class="mb-2 text-dark" style="white-space: pre-wrap; font-size: 0.95rem;">${chunk.content}</p>
                             <div class="text-muted small d-flex justify-content-between">
-                                <span><strong>Файл:</strong> ${chunk.fileName}</span>
-                                <span><strong>Сторінка:</strong> ${chunk.pageNumber}</span>
+                                <span><strong>${tt("rag.search.file")}</strong> ${chunk.fileName}</span>
+                                <span><strong>${tt("rag.search.page")}</strong> ${chunk.pageNumber}</span>
                             </div>
                         </div>
                     `;
                 });
                 html += `</div>`;
             } else {
-                html += `<div class="text-muted text-center my-3"><i class="bi bi-info-circle"></i> Для цього запиту не знайдено релевантних фрагментів у базі.</div>`;
+                html += `<div class="text-muted text-center my-3"><i class="bi bi-info-circle"></i> ${tt("rag.search.noChunks")}</div>`;
             }
 
             html += `</div></div>`;
@@ -289,18 +293,19 @@
 
         document.getElementById('search-result-container').innerHTML = html;
     }
+
     function renderUploadResult(data) {
         let html = `
             <div class="alert alert-success fs-5 shadow-sm text-center">
-                <i class="bi bi-check-circle-fill"></i> Індексацію бази знань успішно завершено за <strong>${data.totalProcessingTimeSeconds.toFixed(2)}</strong> сек.
+                <i class="bi bi-check-circle-fill"></i> ${tt("rag.upload.successPrefix")} <strong>${data.totalProcessingTimeSeconds.toFixed(2)}</strong> ${tt("common.seconds")}.
             </div>
-            
+
             <div class="row text-center mb-3">
                 <div class="col-md-3">
                     <div class="card shadow-sm border-0 bg-light">
                         <div class="card-body">
                             <h3 class="text-primary fw-bold mb-0">${data.totalDocuments}</h3>
-                            <p class="text-muted small mb-0">Всього файлів</p>
+                            <p class="text-muted small mb-0">${tt("rag.upload.totalFiles")}</p>
                         </div>
                     </div>
                 </div>
@@ -308,7 +313,7 @@
                     <div class="card shadow-sm border-0 bg-light">
                         <div class="card-body">
                             <h3 class="text-success fw-bold mb-0">${data.totalNewDocuments}</h3>
-                            <p class="text-muted small mb-0">Нових додано</p>
+                            <p class="text-muted small mb-0">${tt("rag.upload.newAdded")}</p>
                         </div>
                     </div>
                 </div>
@@ -316,7 +321,7 @@
                     <div class="card shadow-sm border-0 bg-light">
                         <div class="card-body">
                             <h3 class="text-warning fw-bold mb-0">${data.totalExistingDocuments}</h3>
-                            <p class="text-muted small mb-0">Вже існували (Скіпнуто)</p>
+                            <p class="text-muted small mb-0">${tt("rag.upload.skipped")}</p>
                         </div>
                     </div>
                 </div>
@@ -324,26 +329,26 @@
                     <div class="card shadow-sm border-0 bg-light">
                         <div class="card-body">
                             <h3 class="text-danger fw-bold mb-0">${data.failedDocuments}</h3>
-                            <p class="text-muted small mb-0">Помилок</p>
+                            <p class="text-muted small mb-0">${tt("rag.upload.failed")}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="card border-primary shadow-sm">
-                <div class="card-header bg-primary text-white">📊 Обчислювальні витрати (Bulk Ingestion Details)</div>
+                <div class="card-header bg-primary text-white">${tt("rag.upload.detailsHeader")}</div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Згенеровано текстових чанків (Knowledge Chunks)
+                            ${tt("rag.upload.chunksGenerated")}
                             <span class="badge bg-secondary rounded-pill fs-6">${data.chunksCount}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Витрачено Input токенів (OpenAI Embeddings)
+                            ${tt("rag.upload.inputTokens")}
                             <span class="badge bg-primary rounded-pill fs-6">${data.fullInputTokenCount}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Всього токенів оброблено
+                            ${tt("rag.upload.totalTokens")}
                             <span class="badge bg-dark rounded-pill fs-6">${data.fullTotalTokenCount}</span>
                         </li>
                     </ul>
@@ -352,4 +357,10 @@
         `;
         document.getElementById('upload-result-container').innerHTML = html;
     }
+
+    // Перемалювати динамічні результати при зміні мови
+    document.addEventListener("logos:langChanged", function () {
+        if (lastUploadData) renderUploadResult(lastUploadData);
+        if (lastSearchResults) renderSearchResult(lastSearchResults);
+    });
 </script>

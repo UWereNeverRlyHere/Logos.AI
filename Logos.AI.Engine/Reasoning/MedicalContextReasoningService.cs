@@ -1,4 +1,5 @@
-﻿using Logos.AI.Abstractions.Exceptions;
+﻿using Logos.AI.Abstractions.Common;
+using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.PatientAnalysis;
 using Logos.AI.Abstractions.RAG;
 using Logos.AI.Abstractions.Reasoning;
@@ -19,14 +20,15 @@ public class MedicalContextReasoningService(
 	private readonly LlmOptions _contextOptions = options.Value.MedicalContext;
 	private readonly LlmOptions _relevanceOptions = options.Value.MedicalRelevance;
 
-	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string request, CancellationToken ct = default)
+	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(string request, string language = SupportedLanguages.Default, CancellationToken ct = default)
 	{
 		try
 		{
-			logger.LogInformation("Sending request to LLM for Medical Context Analysis...");
+			logger.LogInformation("Sending request to LLM for Medical Context Analysis (lang={Language})...", language);
 			var reqData = new LlmRequestDto
 			{
 				LlmOptions = _contextOptions,
+				Language = language,
 				Content = request,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_context_analysis",
@@ -44,10 +46,10 @@ public class MedicalContextReasoningService(
 	}
 	public async Task<ReasoningResult<MedicalContextLlmResponse>> AnalyzeAsync(PatientAnalyzeLLMRequest request, CancellationToken ct = default)
 	{
-		return await AnalyzeAsync(request.SerializeToJson(), ct);
+		return await AnalyzeAsync(request.SerializeToJson(), request.Language, ct);
 	}
 
-	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, CancellationToken ct = default)
+	public async Task<ReasoningResult<RelevanceEvaluationResult>> EvaluateRelevanceAsync(RetrievalResult retrievalResult, string language = SupportedLanguages.Default, CancellationToken ct = default)
 	{
 		try
 		{
@@ -61,6 +63,7 @@ public class MedicalContextReasoningService(
 			var reqData = new LlmRequestDto
 			{
 				LlmOptions = _relevanceOptions,
+				Language = language,
 				Content = evaluationPayload,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					"relevance_evaluation",

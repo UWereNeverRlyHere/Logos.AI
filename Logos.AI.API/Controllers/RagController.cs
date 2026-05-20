@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
+using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Knowledge.Contracts;
 using Logos.AI.Abstractions.Knowledge.Ingestion;
 using Logos.AI.Abstractions.Knowledge.Retrieval;
@@ -17,6 +18,34 @@ public class RagController(
 	IRetrievalAugmentationService retrievalAugmentationService,
 	IIngestionService             ingestionService) : Controller
 {
+	private const string LanguageCookieName = "Logos.Language";
+
+	/// <summary>
+	/// Зчитує мову з cookie (виставляється UI-перемикачем). За замовчуванням — українська.
+	/// </summary>
+	private string GetCurrentLanguage()
+	{
+		var raw = Request.Cookies[LanguageCookieName];
+		return SupportedLanguages.Normalize(raw);
+	}
+
+	/// <summary>
+	/// Встановлює cookie мови (uk/en) на рік. Викликається з UI при перемиканні.
+	/// </summary>
+	[HttpPost("set-language")]
+	public IActionResult SetLanguage([FromForm] string? lang)
+	{
+		var normalized = SupportedLanguages.Normalize(lang);
+		Response.Cookies.Append(LanguageCookieName, normalized, new CookieOptions
+		{
+			Expires = DateTimeOffset.UtcNow.AddYears(1),
+			IsEssential = true,
+			SameSite = SameSiteMode.Lax,
+			HttpOnly = false // дозволяємо читати з JS
+		});
+		return Ok(new { language = normalized });
+	}
+
 	// GET all documents (API)
 	[HttpGet("documents")]
 	public async Task<IActionResult> GetDocuments()
@@ -64,8 +93,11 @@ public class RagController(
 			// Десеріалізуємо у запит
 			var reqData = JsonSerializer.Deserialize<PatientAnalyzeRagRequest>(jsonContent, options);
 
-			if (reqData == null) 
+			if (reqData == null)
 				return BadRequest(new { error = "Invalid JSON format." });
+
+			// Підставляємо обрану користувачем мову (з cookie) для відповіді LLM
+			reqData = reqData with { Language = GetCurrentLanguage() };
 
 			// Запускаємо оркестратор
 			var processedContext = await orchestrator.GenerateResponseAsync(reqData);
@@ -83,14 +115,23 @@ public class RagController(
 	public async Task<IActionResult> TestAugmentation([FromBody] PatientAnalyzeRagRequest reqData)
 	{
 		if (!ModelState.IsValid) return BadRequest(ModelState);
+		// Якщо клієнт не вказав мову у body — беремо з cookie
+		if (string.IsNullOrWhiteSpace(reqData.Language) || reqData.Language == SupportedLanguages.Default && Request.Cookies.ContainsKey(LanguageCookieName))
+		{
+			reqData = reqData with { Language = GetCurrentLanguage() };
+		}
 		var processedContext = await retrievalAugmentationService.AugmentAsync(reqData);
 		return Ok(processedContext);
 	}
-	
+
 	[HttpPost("testGeneration")]
 	public async Task<IActionResult> TestGeneration([FromBody] PatientAnalyzeRagRequest reqData)
 	{
 		if (!ModelState.IsValid) return BadRequest(ModelState);
+		if (string.IsNullOrWhiteSpace(reqData.Language) || reqData.Language == SupportedLanguages.Default && Request.Cookies.ContainsKey(LanguageCookieName))
+		{
+			reqData = reqData with { Language = GetCurrentLanguage() };
+		}
 		var processedContext = await orchestrator.GenerateResponseAsync(reqData);
 		return Ok(processedContext);
 	}

@@ -1,11 +1,15 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="uk">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Logos.AI</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        .lang-switcher .btn { padding: 0.15rem 0.55rem; font-size: 0.85rem; font-weight: 600; }
+        .lang-switcher .btn.active { background-color: #0d6efd; color: #fff; border-color: #0d6efd; }
+    </style>
 </head>
 <body>
     <header>
@@ -19,18 +23,22 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index" data-i18n="nav.home">Головна</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Rag" asp-action="Index">RAG</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Rag" asp-action="Index" data-i18n="nav.rag">RAG</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Rag" asp-action="TestExamples">Test Examples</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Rag" asp-action="TestExamples" data-i18n="nav.testExamples">Тестові приклади</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy" data-i18n="nav.privacy">Конфіденційність</a>
                         </li>
                     </ul>
+                    <div class="lang-switcher btn-group" role="group" aria-label="Language switcher">
+                        <button type="button" class="btn btn-outline-primary" data-lang="uk" id="lang-btn-uk">UA</button>
+                        <button type="button" class="btn btn-outline-primary" data-lang="en" id="lang-btn-en">EN</button>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -43,12 +51,277 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2025 - Logos.AI - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2025 - Logos.AI - <a asp-area="" asp-controller="Home" asp-action="Privacy" data-i18n="nav.privacy">Конфіденційність</a>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+    // ============================================================
+    // Logos.AI — простий i18n для UI (без зовнішніх бібліотек).
+    // ============================================================
+    (function () {
+        const COOKIE_NAME = "Logos.Language";
+        const DEFAULT_LANG = "uk";
+        const SUPPORTED = ["uk", "en"];
+
+        const DICT = {
+            uk: {
+                // Навігація / загальне
+                "nav.home": "Головна",
+                "nav.rag": "RAG",
+                "nav.testExamples": "Тестові приклади",
+                "nav.privacy": "Конфіденційність",
+                "common.loading": "Завантаження...",
+                "common.unknownError": "Невідома помилка",
+                "common.error": "Помилка:",
+                "common.networkError": "Помилка мережі:",
+                "common.seconds": "сек",
+                "common.waitTime": "Час очікування:",
+
+                // RAG / Index
+                "rag.title": "RAG Search",
+                "rag.heading": "🔍 RAG-портал пошуку на .NET",
+                "rag.subheading": "[.NET 9, OpenAI Embedding, Qdrant Vector DB, Semantичний пошук, Джерело — PDF]",
+                "rag.sources.header": "📚 Проіндексовані джерела",
+                "rag.sources.empty": "Документи ще не проіндексовано.",
+                "rag.upload.header": "📤 Завантаження бази знань (папка)",
+                "rag.upload.hint": "Оберіть папку, що містить PDF-протоколи або статті. Система автоматично відкине файли інших форматів, розіб'є PDF на чанки та векторизує їх у Qdrant.",
+                "rag.upload.chooseFolder": "Обрати папку",
+                "rag.upload.noFolder": "Папку не обрано...",
+                "rag.upload.selectedFiles": "Обрано файлів:",
+                "rag.upload.button": "Завантажити та індексувати",
+                "rag.upload.alertChooseFolder": "Оберіть папку з PDF файлами.",
+                "rag.upload.loaderMessage": "ШІ читає документи, б'є на чанки та генерує ембеддінги...",
+                "rag.upload.successPrefix": "Індексацію бази знань успішно завершено за",
+                "rag.upload.totalFiles": "Всього файлів",
+                "rag.upload.newAdded": "Нових додано",
+                "rag.upload.skipped": "Вже існували (пропущено)",
+                "rag.upload.failed": "Помилок",
+                "rag.upload.detailsHeader": "📊 Обчислювальні витрати (деталі масової індексації)",
+                "rag.upload.chunksGenerated": "Згенеровано текстових чанків (Knowledge Chunks)",
+                "rag.upload.inputTokens": "Витрачено Input-токенів (OpenAI Embeddings)",
+                "rag.upload.totalTokens": "Всього токенів оброблено",
+                "rag.search.header": "🔎 Семантичний пошук у векторній БД",
+                "rag.search.placeholder": "Введіть фразу або декілька через кому (напр. Гіпертонія, Аспірин)...",
+                "rag.search.button": "Пошук",
+                "rag.search.loader": "Виконується пошук по векторній базі Qdrant...",
+                "rag.search.nothingFound": "Нічого не знайдено.",
+                "rag.search.queryLabel": "Запит:",
+                "rag.search.avgScore": "Середній Score:",
+                "rag.search.chunksCount": "Чанків:",
+                "rag.search.time": "Час:",
+                "rag.search.unknownDoc": "Невідомий документ",
+                "rag.search.score": "Score:",
+                "rag.search.file": "Файл:",
+                "rag.search.page": "Сторінка:",
+                "rag.search.noChunks": "Для цього запиту не знайдено релевантних фрагментів у базі.",
+
+                // TestExamples
+                "test.title": "Тестові приклади пацієнтів",
+                "test.heading": "🩺 AI Medical Analysis — Тестові приклади",
+                "test.hint": "Оберіть тестового пацієнта для запуску повного циклу RAG (Retrieval + Reasoning + Validation).",
+                "test.analyzePatient": "Аналізувати пацієнта",
+                "test.aiAnalyzing": "Штучний інтелект аналізує дані...",
+                "test.analysisDonePrefix": "Аналіз успішно завершено за",
+                "test.tokensTotal": "Загалом використано токенів:",
+                "test.ragInfo": "⚙️ Інформація RAG-оркестратора",
+                "test.modelUsed": "Використана модель:",
+                "test.contextSearchTime": "Час пошуку контексту:",
+                "test.generationTime": "Час генерації висновку:",
+                "test.tokensInputTotal": "Сумарні токени (Input / Total):",
+                "test.tokensAugmentation": "Токени аугментації (пошук):",
+                "test.tokensReasoning": "Токени генерації (Reasoning):",
+                "test.confidence": "🛡️ Система валідації впевненості",
+                "test.score": "Score:",
+                "test.level": "Рівень:",
+                "test.mathDetails": "Деталі математичного аналізу:",
+                "test.clinical": "🧬 Клінічний аналіз (фінальний висновок AI)",
+                "test.formattedReport": "📄 Сформований медичний звіт (для пацієнта)",
+                "test.preliminary": "🔍 Попередня діагностична гіпотеза",
+                "test.context": "📚 Знайдений контекст (фрагменти з бази знань)",
+                "test.globalAvgScore": "Глобальний середній Score релевантності:",
+
+                // Home
+                "home.title": "Головна",
+                "home.welcome": "Вітаємо",
+                "home.learn": "Дізнайтеся про",
+                "home.learnLink": "побудову веб-застосунків на ASP.NET Core",
+
+                // Privacy
+                "privacy.title": "Політика конфіденційності",
+                "privacy.body": "Використовуйте цю сторінку, щоб детально описати політику конфіденційності вашого сайту."
+            },
+            en: {
+                "nav.home": "Home",
+                "nav.rag": "RAG",
+                "nav.testExamples": "Test Examples",
+                "nav.privacy": "Privacy",
+                "common.loading": "Loading...",
+                "common.unknownError": "Unknown error",
+                "common.error": "Error:",
+                "common.networkError": "Network error:",
+                "common.seconds": "s",
+                "common.waitTime": "Wait time:",
+
+                "rag.title": "RAG Search",
+                "rag.heading": "🔍 RAG Search Portal in .NET",
+                "rag.subheading": "[.NET 9, OpenAI Embedding, Qdrant Vector DB, Semantic Search, Data Source — PDF]",
+                "rag.sources.header": "📚 Indexed Sources",
+                "rag.sources.empty": "No documents indexed yet.",
+                "rag.upload.header": "📤 Upload Knowledge Base (Folder)",
+                "rag.upload.hint": "Choose a folder with PDF protocols or articles. The system will automatically discard non-PDF files, split PDFs into chunks and vectorize them into Qdrant.",
+                "rag.upload.chooseFolder": "Choose Folder",
+                "rag.upload.noFolder": "No folder chosen...",
+                "rag.upload.selectedFiles": "Selected files:",
+                "rag.upload.button": "Upload & Index",
+                "rag.upload.alertChooseFolder": "Please select a folder with PDF files.",
+                "rag.upload.loaderMessage": "AI is reading documents, splitting into chunks and generating embeddings...",
+                "rag.upload.successPrefix": "Knowledge base indexing completed in",
+                "rag.upload.totalFiles": "Total files",
+                "rag.upload.newAdded": "Newly added",
+                "rag.upload.skipped": "Already existed (skipped)",
+                "rag.upload.failed": "Errors",
+                "rag.upload.detailsHeader": "📊 Computational cost (bulk ingestion details)",
+                "rag.upload.chunksGenerated": "Knowledge chunks generated",
+                "rag.upload.inputTokens": "Input tokens spent (OpenAI Embeddings)",
+                "rag.upload.totalTokens": "Total tokens processed",
+                "rag.search.header": "🔎 Semantic Search in Vector DB",
+                "rag.search.placeholder": "Enter a phrase or several comma-separated phrases (e.g. Hypertension, Aspirin)...",
+                "rag.search.button": "Search",
+                "rag.search.loader": "Searching the Qdrant vector database...",
+                "rag.search.nothingFound": "Nothing found.",
+                "rag.search.queryLabel": "Query:",
+                "rag.search.avgScore": "Average score:",
+                "rag.search.chunksCount": "Chunks:",
+                "rag.search.time": "Time:",
+                "rag.search.unknownDoc": "Unknown document",
+                "rag.search.score": "Score:",
+                "rag.search.file": "File:",
+                "rag.search.page": "Page:",
+                "rag.search.noChunks": "No relevant fragments found in the knowledge base for this query.",
+
+                "test.title": "Test Patient Examples",
+                "test.heading": "🩺 AI Medical Analysis — Test Examples",
+                "test.hint": "Pick a test patient to run the full RAG pipeline (Retrieval + Reasoning + Validation).",
+                "test.analyzePatient": "Analyze Patient",
+                "test.aiAnalyzing": "Artificial Intelligence is analyzing the data...",
+                "test.analysisDonePrefix": "Analysis completed in",
+                "test.tokensTotal": "Total tokens used:",
+                "test.ragInfo": "⚙️ RAG Orchestrator Info",
+                "test.modelUsed": "Model used:",
+                "test.contextSearchTime": "Context retrieval time:",
+                "test.generationTime": "Conclusion generation time:",
+                "test.tokensInputTotal": "Total tokens (Input / Total):",
+                "test.tokensAugmentation": "Augmentation tokens (Retrieval):",
+                "test.tokensReasoning": "Reasoning tokens:",
+                "test.confidence": "🛡️ Confidence Validation System",
+                "test.score": "Score:",
+                "test.level": "Level:",
+                "test.mathDetails": "Math analysis details:",
+                "test.clinical": "🧬 Clinical analysis (final AI conclusion)",
+                "test.formattedReport": "📄 Formatted medical report (for the patient)",
+                "test.preliminary": "🔍 Preliminary Diagnostic Hypothesis",
+                "test.context": "📚 Context retrieval (knowledge base fragments)",
+                "test.globalAvgScore": "Global average relevance score:",
+
+                "home.title": "Home",
+                "home.welcome": "Welcome",
+                "home.learn": "Learn about",
+                "home.learnLink": "building Web apps with ASP.NET Core",
+
+                "privacy.title": "Privacy Policy",
+                "privacy.body": "Use this page to detail your site's privacy policy."
+            }
+        };
+
+        function readCookie(name) {
+            const parts = ("; " + document.cookie).split("; " + name + "=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return null;
+        }
+
+        function writeCookie(name, value) {
+            const oneYear = 60 * 60 * 24 * 365;
+            document.cookie = name + "=" + encodeURIComponent(value) + "; max-age=" + oneYear + "; path=/; samesite=lax";
+        }
+
+        function detectLang() {
+            const raw = readCookie(COOKIE_NAME);
+            if (raw && SUPPORTED.indexOf(raw) >= 0) return raw;
+            return DEFAULT_LANG;
+        }
+
+        let currentLang = detectLang();
+
+        function t(key) {
+            const table = DICT[currentLang] || DICT[DEFAULT_LANG];
+            if (table && Object.prototype.hasOwnProperty.call(table, key)) return table[key];
+            const fallback = DICT[DEFAULT_LANG];
+            if (fallback && Object.prototype.hasOwnProperty.call(fallback, key)) return fallback[key];
+            return key;
+        }
+
+        function applyI18n(root) {
+            const scope = root || document;
+            scope.querySelectorAll("[data-i18n]").forEach(function (el) {
+                el.textContent = t(el.getAttribute("data-i18n"));
+            });
+            scope.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
+                el.setAttribute("placeholder", t(el.getAttribute("data-i18n-placeholder")));
+            });
+            scope.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+                el.setAttribute("title", t(el.getAttribute("data-i18n-title")));
+            });
+            scope.querySelectorAll("[data-i18n-value]").forEach(function (el) {
+                el.setAttribute("value", t(el.getAttribute("data-i18n-value")));
+            });
+            document.documentElement.setAttribute("lang", currentLang);
+        }
+
+        function refreshLangButtons() {
+            document.querySelectorAll(".lang-switcher [data-lang]").forEach(function (b) {
+                if (b.getAttribute("data-lang") === currentLang) b.classList.add("active");
+                else b.classList.remove("active");
+            });
+        }
+
+        function setLang(lang) {
+            if (SUPPORTED.indexOf(lang) < 0) lang = DEFAULT_LANG;
+            currentLang = lang;
+            writeCookie(COOKIE_NAME, lang);
+            refreshLangButtons();
+            applyI18n();
+            // Сповіщаємо сторінку, щоб перемалювати динамічні блоки
+            document.dispatchEvent(new CustomEvent("logos:langChanged", { detail: { lang: lang } }));
+            // Синхронізуємо з сервером (запам'ятовуємо для майбутніх запитів)
+            const fd = new FormData();
+            fd.append("lang", lang);
+            fetch("/rag/set-language", { method: "POST", body: fd }).catch(function () { /* ignore */ });
+        }
+
+        // Експортуємо публічний API
+        window.Logos = window.Logos || {};
+        window.Logos.i18n = {
+            t: t,
+            apply: applyI18n,
+            setLang: setLang,
+            getLang: function () { return currentLang; }
+        };
+        // Зручний короткий аліас
+        window.t = t;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            refreshLangButtons();
+            applyI18n();
+            document.querySelectorAll(".lang-switcher [data-lang]").forEach(function (b) {
+                b.addEventListener("click", function () { setLang(b.getAttribute("data-lang")); });
+            });
+        });
+    })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -71,7 +71,7 @@ public record RetrievalAugmentationResult
 		var eTotalTotal = request.RetrievalResults.Sum(s => s.Embedding.GetTotalTokenCount());
 		var embeddingTokensSpent = new TokenUsageInfo(eTotalInput, eTotalTotal);
 		var augmentationTokensSpent = new TokenUsageInfo(embeddingTokensSpent.InputTokenCount + request.ReasoningTokensSpent.InputTokenCount, embeddingTokensSpent.TotalTokenCount + request.ReasoningTokensSpent.TotalTokenCount);
-		var globalAverageScore = request.RetrievalResults.Any() ? request.RetrievalResults.SelectMany(c => c.FoundChunks).Average(c => c.Score) : 0f;
+		var globalAverageScore = request.RetrievalResults.Any() && request.RetrievalResults.Any(x => x.FoundChunks.Any()) ? request.RetrievalResults.SelectMany(c => c.FoundChunks).Average(c => c.Score) : 0f;
 		
 		var result = new RetrievalAugmentationResult
 		{

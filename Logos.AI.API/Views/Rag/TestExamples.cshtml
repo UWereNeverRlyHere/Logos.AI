@@ -1,35 +1,35 @@
-﻿@{
+@{
     ViewData["Title"] = "Test Patient Examples";
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4 text-primary">🩺 AI Medical Analysis - Test Examples</h2>
-    <p class="text-muted">Оберіть тестового пацієнта для запуску повного циклу RAG (Retrieval + Reasoning + Validation).</p>
+    <h2 class="mb-4 text-primary" data-i18n="test.heading">🩺 AI Medical Analysis — Тестові приклади</h2>
+    <p class="text-muted" data-i18n="test.hint">Оберіть тестового пацієнта для запуску повного циклу RAG (Retrieval + Reasoning + Validation).</p>
 
     <div class="row mb-4">
         <div class="col-md-4">
             <button class="btn btn-outline-primary w-100 py-3 shadow-sm" onclick="analyzePatient('Patient1')">
-                <i class="bi bi-person-fill"></i> Analyze Patient 1
+                <i class="bi bi-person-fill"></i> <span data-i18n="test.analyzePatient">Аналізувати пацієнта</span> 1
             </button>
         </div>
         <div class="col-md-4">
             <button class="btn btn-outline-success w-100 py-3 shadow-sm" onclick="analyzePatient('Patient2')">
-                <i class="bi bi-person-fill"></i> Analyze Patient 2
+                <i class="bi bi-person-fill"></i> <span data-i18n="test.analyzePatient">Аналізувати пацієнта</span> 2
             </button>
         </div>
         <div class="col-md-4">
             <button class="btn btn-outline-warning w-100 py-3 shadow-sm" onclick="analyzePatient('Patient3')">
-                <i class="bi bi-person-fill"></i> Analyze Patient 3
+                <i class="bi bi-person-fill"></i> <span data-i18n="test.analyzePatient">Аналізувати пацієнта</span> 3
             </button>
         </div>
     </div>
 
     <div id="loader-section" class="text-center my-5" style="display: none;">
         <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden" data-i18n="common.loading">Завантаження...</span>
         </div>
-        <h4 class="mt-3 text-secondary">Штучний інтелект аналізує дані...</h4>
-        <h5 class="text-primary fw-bold">Час очікування: <span id="timer">0</span> сек</h5>
+        <h4 class="mt-3 text-secondary" data-i18n="test.aiAnalyzing">Штучний інтелект аналізує дані...</h4>
+        <h5 class="text-primary fw-bold"><span data-i18n="common.waitTime">Час очікування:</span> <span id="timer">0</span> <span data-i18n="common.seconds">сек</span></h5>
     </div>
 
     <div id="result-container" class="mt-4"></div>
@@ -39,12 +39,16 @@
     <script>
         let timerInterval;
         let secondsPassed = 0;
+        let lastResultData = null;
+
+        const i18n = () => (window.Logos && window.Logos.i18n) ? window.Logos.i18n : { t: function (k) { return k; } };
+        const tt = (k) => i18n().t(k);
 
         function startTimer() {
             secondsPassed = 0;
             document.getElementById('timer').innerText = secondsPassed;
             document.getElementById('loader-section').style.display = 'block';
-            document.getElementById('result-container').innerHTML = ''; // Очищаємо попередній результат
+            document.getElementById('result-container').innerHTML = '';
 
             timerInterval = setInterval(() => {
                 secondsPassed++;
@@ -61,7 +65,6 @@
             startTimer();
 
             try {
-                // Виконуємо запит до нашого бекенду
                 const response = await fetch(`/rag/analyzeTestPatient/${patientId}`, {
                     method: 'POST'
                 });
@@ -70,105 +73,99 @@
                 stopTimer();
 
                 if (response.ok) {
+                    lastResultData = data;
                     renderResultUI(data);
                 } else {
-                    document.getElementById('result-container').innerHTML = 
-                        `<div class="alert alert-danger">Error: ${data.error || 'Unknown error occurred'}</div>`;
+                    document.getElementById('result-container').innerHTML =
+                        `<div class="alert alert-danger">${tt("common.error")} ${data.error || tt("common.unknownError")}</div>`;
                 }
             } catch (error) {
                 stopTimer();
-                document.getElementById('result-container').innerHTML = 
-                    `<div class="alert alert-danger">Network Error: ${error.message}</div>`;
+                document.getElementById('result-container').innerHTML =
+                    `<div class="alert alert-danger">${tt("common.networkError")} ${error.message}</div>`;
             }
         }
 
-        // Головна функція для малювання красивих карток
-        // Головна функція для малювання красивих карток
         function renderResultUI(data) {
-            // Допоміжна функція для безпечного виведення чисел
             const safeNum = (val, def = 0) => (typeof val === 'number' ? val : def).toFixed(2);
 
             let html = `<div class="alert alert-success fs-5 shadow-sm">
-                            <i class="bi bi-check-circle-fill"></i> Аналіз успішно завершено за <strong>${safeNum(data.totalProcessingTimeSeconds)}</strong> сек.
-                            <br><small><i class="bi bi-cpu"></i> Загалом використано токенів: <span class="badge bg-secondary">${data.totalTokenUsage?.totalTokenCount || 0}</span></small>
+                            <i class="bi bi-check-circle-fill"></i> ${tt("test.analysisDonePrefix")} <strong>${safeNum(data.totalProcessingTimeSeconds)}</strong> ${tt("common.seconds")}.
+                            <br><small><i class="bi bi-cpu"></i> ${tt("test.tokensTotal")} <span class="badge bg-secondary">${data.totalTokenUsage?.totalTokenCount || 0}</span></small>
                         </div>`;
 
-            // 1. Загальна інформація про RAG та Токени
+            // 1. RAG Orchestrator Info
             html += `<div class="card mb-4 border-info shadow-sm">
-                        <div class="card-header bg-info text-white fw-bold">⚙️ RAG Orchestrator Info</div>
+                        <div class="card-header bg-info text-white fw-bold">${tt("test.ragInfo")}</div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 border-end">
-                                    <p><strong>Використана модель:</strong> <span class="badge bg-primary fs-6">${data.analyzeModel || 'Unknown'}</span></p>
-                                    <p><strong>Час пошуку контексту:</strong> ${safeNum(data.totalAugmentationProcessingTimeSeconds)} с</p>
-                                    <p><strong>Час генерації висновку:</strong> ${safeNum(data.totalGenerationProcessingTimeSeconds)} с</p>
+                                    <p><strong>${tt("test.modelUsed")}</strong> <span class="badge bg-primary fs-6">${data.analyzeModel || 'Unknown'}</span></p>
+                                    <p><strong>${tt("test.contextSearchTime")}</strong> ${safeNum(data.totalAugmentationProcessingTimeSeconds)} ${tt("common.seconds")}</p>
+                                    <p><strong>${tt("test.generationTime")}</strong> ${safeNum(data.totalGenerationProcessingTimeSeconds)} ${tt("common.seconds")}</p>
                                 </div>
                                 <div class="col-md-6 ps-4">
-                                    <p><strong>Сумарні токени (Input / Total):</strong> ${data.totalTokenUsage?.inputTokenCount || 0} / ${data.totalTokenUsage?.totalTokenCount || 0}</p>
-                                    <p><strong>Токени аугментації (Пошук):</strong> ${data.augmentationResult?.augmentationTokensSpent?.totalTokenCount || 0}</p>
-                                    <p><strong>Токени генерації (Reasoning):</strong> ${data.ragResult?.reasoningTokensSpent?.totalTokenCount || 0}</p>
+                                    <p><strong>${tt("test.tokensInputTotal")}</strong> ${data.totalTokenUsage?.inputTokenCount || 0} / ${data.totalTokenUsage?.totalTokenCount || 0}</p>
+                                    <p><strong>${tt("test.tokensAugmentation")}</strong> ${data.augmentationResult?.augmentationTokensSpent?.totalTokenCount || 0}</p>
+                                    <p><strong>${tt("test.tokensReasoning")}</strong> ${data.ragResult?.reasoningTokensSpent?.totalTokenCount || 0}</p>
                                 </div>
                             </div>
                         </div>
                      </div>`;
 
-            // 2. Валідація впевненості (Confidence Validation) - якщо є
+            // 2. Confidence Validation
             if (data.nonReasoningConfidenceValidation) {
                 let val = data.nonReasoningConfidenceValidation;
                 let bgClass = val.isValid ? "bg-success" : "bg-danger";
 
                 html += `<div class="card mb-4 shadow-sm border-success">
-                            <div class="card-header ${bgClass} text-white fw-bold">🛡️ Confidence Validation System</div>
+                            <div class="card-header ${bgClass} text-white fw-bold">${tt("test.confidence")}</div>
                             <div class="card-body">
-                                <h5 class="card-title">Score: ${safeNum(val.score, 0)} / Level: ${val.confidenceLevel}</h5>
+                                <h5 class="card-title">${tt("test.score")} ${safeNum(val.score, 0)} / ${tt("test.level")} ${val.confidenceLevel}</h5>
                                 <hr/>
-                                <h6>Деталі математичного аналізу:</h6>
+                                <h6>${tt("test.mathDetails")}</h6>
                                 <ul>${(val.details || []).map(d => `<li>${d}</li>`).join('')}</ul>
                             </div>
                          </div>`;
             }
 
-            // 3. Медичний висновок (Medical Analyzing Response)
-            // Використовуємо data.ragResult, бо в C# поле називається RagResult
+            // 3. Medical Analyzing Response
             if (data.ragResult && data.ragResult.medicalAnalyzingLLmResponse) {
-
-                // Робимо копію об'єкта, щоб витягнути FormattedReport і вивести його окремо красивим текстом, а не в таблиці
                 let responseObj = JSON.parse(JSON.stringify(data.ragResult.medicalAnalyzingLLmResponse));
                 let markdownReport = responseObj.formattedReport;
                 delete responseObj.formattedReport;
 
                 html += `<div class="card mb-4 border-primary shadow-sm">
-                            <div class="card-header bg-primary text-white fw-bold">🧬 Medical Clinical Analysis (Фінальний висновок AI)</div>
+                            <div class="card-header bg-primary text-white fw-bold">${tt("test.clinical")}</div>
                             <div class="card-body bg-light">
                                 ${renderObjectToHtmlTable(responseObj)}
                             </div>
                          </div>`;
 
-                // Якщо є згенерований текст для пацієнта - виводимо його окремим блоком
                 if (markdownReport) {
                     html += `<div class="card mb-4 border-dark shadow-sm">
-                                <div class="card-header bg-dark text-white fw-bold">📄 Formatted Medical Report (Звіт пацієнту)</div>
+                                <div class="card-header bg-dark text-white fw-bold">${tt("test.formattedReport")}</div>
                                 <div class="card-body bg-light" style="white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.95rem;">${markdownReport}</div>
                              </div>`;
                 }
             }
 
-            // 4. Попередня гіпотеза (Preliminary Diagnostic Hypothesis)
+            // 4. Preliminary Hypothesis
             if (data.augmentationResult && data.augmentationResult.preliminaryDiagnosticHypothesis) {
                 html += `<div class="card mb-4 border-secondary shadow-sm">
-                            <div class="card-header bg-secondary text-white fw-bold">🔍 Preliminary Diagnostic Hypothesis</div>
+                            <div class="card-header bg-secondary text-white fw-bold">${tt("test.preliminary")}</div>
                             <div class="card-body">
                                 ${renderObjectToHtmlTable(data.augmentationResult.preliminaryDiagnosticHypothesis)}
                             </div>
                          </div>`;
             }
 
-            // 5. Знайдені документи в базі (Context Retrieval)
+            // 5. Context Retrieval
             if (data.augmentationResult && data.augmentationResult.retrievalResults && data.augmentationResult.retrievalResults.length > 0) {
                 html += `<div class="card mb-4 border-warning shadow-sm">
-                            <div class="card-header bg-warning text-dark fw-bold">📚 Context Retrieval (Знайдені фрагменти в Базі Знань)</div>
+                            <div class="card-header bg-warning text-dark fw-bold">${tt("test.context")}</div>
                             <div class="card-body">
-                                <p class="mb-3"><strong>Глобальний середній Score релевантності:</strong> ${safeNum(data.augmentationResult.globalAverageScore)}</p>
+                                <p class="mb-3"><strong>${tt("test.globalAvgScore")}</strong> ${safeNum(data.augmentationResult.globalAverageScore)}</p>
                                 ${renderObjectToHtmlTable(data.augmentationResult.retrievalResults)}
                             </div>
                          </div>`;
@@ -177,20 +174,18 @@
             document.getElementById('result-container').innerHTML = html;
         }
 
-        // Рекурсивна функція, яка перетворює будь-який JSON-об'єкт у красиву HTML таблицю/список
         function renderObjectToHtmlTable(obj) {
             if (typeof obj !== 'object' || obj === null) {
                 return `<span>${obj}</span>`;
             }
             if (Array.isArray(obj)) {
-                return `<ul class="list-group list-group-flush border mb-2">` + 
-                       obj.map(item => `<li class="list-group-item bg-transparent">${renderObjectToHtmlTable(item)}</li>`).join('') + 
+                return `<ul class="list-group list-group-flush border mb-2">` +
+                       obj.map(item => `<li class="list-group-item bg-transparent">${renderObjectToHtmlTable(item)}</li>`).join('') +
                        `</ul>`;
             }
-            
+
             let html = `<div class="table-responsive"><table class="table table-sm table-bordered bg-white mb-0"><tbody>`;
             for (let key in obj) {
-                // Форматуємо CamelCase ключі у звичайний текст (напр. "isMedical" -> "Is Medical")
                 let formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, function(str){ return str.toUpperCase(); });
                 html += `<tr>
                             <th class="w-25 text-muted bg-light">${formattedKey}</th>
@@ -200,5 +195,10 @@
             html += `</tbody></table></div>`;
             return html;
         }
+
+        // Перемалюємо результат при зміні мови
+        document.addEventListener("logos:langChanged", function () {
+            if (lastResultData) renderResultUI(lastResultData);
+        });
     </script>
 }

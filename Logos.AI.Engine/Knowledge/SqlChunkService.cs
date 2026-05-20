@@ -29,32 +29,40 @@ public class SqlChunkService(LogosDbContext dbContext, ILogger<SqlChunkService> 
 		DocumentChunkingResult documentChunkingResult,
 		CancellationToken   ct = default)
 	{
-		// 1. Перевірка дублікатів
-		var existing = await dbContext.Documents
-			.FirstOrDefaultAsync(d => d.Id == documentChunkingResult.DocumentId, ct);
-		if (existing != null)
+		try
 		{
-			logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save", existing.Id);
-			return existing.Id;
-		}
-		// 2. Створення документа
-		var document = Document.CreateFromSimpleDocumentChunk(uploadDto, documentChunkingResult);
-		// 3. Мапінг чанків з правильними сторінками
-		var chunksEntities = documentChunkingResult.Chunks.Select(c => new DocumentChunk
-		{
-			Id = Guid.NewGuid(),
-			DocumentId = document.Id,
-			PageNumber = c.PageNumber, 
-			Content = c.Content,
-			TokenCount = c.Content.Length / 4
-		}).ToList();
-		document.Chunks = chunksEntities;
-		// 4. Збереження
-		dbContext.Documents.Add(document);
-		await dbContext.SaveChangesAsync(ct);
+			// 1. Перевірка дублікатів
+			var existing = await dbContext.Documents.FirstOrDefaultAsync(d => d.Id == documentChunkingResult.DocumentId, ct);
+			if (existing != null)
+			{
+				logger.LogWarning("Document with hash {Id} already exists. Skipping SQL save", existing.Id);
+				return existing.Id;
+			}
+			// 2. Створення документа
+			var document = Document.CreateFromSimpleDocumentChunk(uploadDto, documentChunkingResult);
+			// 3. Мапінг чанків з правильними сторінками
+			var chunksEntities = documentChunkingResult.Chunks.Select(c => new DocumentChunk
+			{
+				Id = Guid.NewGuid(),
+				DocumentId = document.Id,
+				PageNumber = c.PageNumber, 
+				Content = c.Content,
+				TokenCount = c.Content.Length / 4
+			}).ToList();
+			document.Chunks = chunksEntities;
+			// 4. Збереження
+			dbContext.Documents.Add(document);
+			await dbContext.SaveChangesAsync(ct);
 
-		logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", documentChunkingResult.FileName, chunksEntities.Count);
-		return document.Id;
+			logger.LogInformation("Saved document {FileName} with {Count} chunks (Pages preserved)", documentChunkingResult.FileName, chunksEntities.Count);
+			return document.Id;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			return Guid.Empty;
+		}
+	
 	}
 
 	/// <summary>

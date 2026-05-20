@@ -16,6 +16,7 @@ public record LlmOptions
 {
 	public string Model { get; init; } = "gpt-4o";
 	public string PromptFile { get; init; } = "";
+	public string PromptFileEn { get; init; } = "";
 	public int MaxTokens { get; init; } = 1024;
 	public bool IncludeLogProbabilities { get; init; } = true;
 	public int TopLogProbabilityCount { get; init; } = 5;

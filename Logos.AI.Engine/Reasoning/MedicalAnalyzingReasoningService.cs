@@ -20,11 +20,13 @@ public class MedicalAnalyzingReasoningService(
 	{
 		try
 		{
-			logger.LogInformation("Sending request to LLM for Clinical Reasoning (Structured Output)...");
+			var language = request.PatientAnalyzeData.Language;
+			logger.LogInformation("Sending request to LLM for Clinical Reasoning (Structured Output, lang={Language})...", language);
 			var opt = request.PreliminaryDiagnosticHypothesis.RequiresComplexAnalysis ? _reasoningPptions : _nonReasoningOptions;
 			var reqData = new LlmRequestDto
 			{
 				LlmOptions = opt,
+				Language = language,
 				Content = request,
 				ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
 					jsonSchemaFormatName: "medical_analysis",

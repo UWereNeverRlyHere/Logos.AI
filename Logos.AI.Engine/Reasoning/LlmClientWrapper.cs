@@ -2,6 +2,7 @@
 using Logos.AI.Abstractions.Common;
 using Logos.AI.Abstractions.Exceptions;
 using Logos.AI.Abstractions.Reasoning;
+using Logos.AI.Engine.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
@@ -73,17 +74,32 @@ public class LlmClientWrapper(IChatClientFactory chatClientFactory, IHostEnviron
 
 	private ICollection<ChatMessage> GetChatMessages(LlmRequestDto requestDto)
 	{
-		var promptPath = Path.Combine(environment.ContentRootPath, "PromptKnowledgeBase", requestDto.LlmOptions.PromptFile);
+		var promptFileName = ResolvePromptFileName(requestDto.LlmOptions, requestDto.Language);
+		var promptPath = Path.Combine(environment.ContentRootPath, "PromptKnowledgeBase", promptFileName);
 		if (!File.Exists(promptPath))
 		{
 			throw new FileNotFoundException($"Critical error: Prompt file not found at {promptPath}");
 		}
+		logger.LogDebug("Using prompt file '{PromptFile}' for language '{Language}'", promptFileName, requestDto.Language);
 		var messages = new List<ChatMessage>
 		{
 			new SystemChatMessage(File.ReadAllText(promptPath)),
 			new UserChatMessage(requestDto.UserMessageJsonContent)
 		};
 		return messages;
+	}
+
+	/// <summary>
+	/// Обирає файл промта залежно від мови. Якщо EN-варіант не заданий — повертається до основного.
+	/// </summary>
+	private static string ResolvePromptFileName(LlmOptions options, string language)
+	{
+		var normalized = SupportedLanguages.Normalize(language);
+		if (normalized == SupportedLanguages.En && !string.IsNullOrWhiteSpace(options.PromptFileEn))
+		{
+			return options.PromptFileEn;
+		}
+		return options.PromptFile;
 	}
 
 	private ChatCompletionOptions GetChatCompletionOptions(LlmRequestDto requestDto)

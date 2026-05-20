@@ -39,7 +39,6 @@ public class RagOrchestrator(
 			TotalProcessingTimeSeconds = reasoningStopWatch.Elapsed.TotalSeconds,
 			ReasoningTokensSpent = reasoningRes.TokenUsage,
 			MedicalAnalyzingLLmResponse = reasoningRes.Data,
-
 		};
 		var model = augmentationRes.PreliminaryDiagnosticHypothesis.RequiresComplexAnalysis 
 			? $"Reasoning: {options.Value.ReasoningMedicalAnalyzing.Model}"

@@ -107,7 +107,7 @@ public class IngestionService(
 		var results = new ConcurrentBag<IngestionResult>();
 		var parallelOptions = new ParallelOptions
 		{
-			MaxDegreeOfParallelism = 5,
+			MaxDegreeOfParallelism = 4,
 			CancellationToken = ct
 		};
 
